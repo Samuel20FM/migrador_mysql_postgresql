@@ -1,0 +1,209 @@
+{
+  "inicio": "2026-10-24T13:24:46",
+  "fim": "2026-10-24T13:24:47",
+  "resumo": {
+    "Origem": "mysql://migra@127.0.0.1:3306/g_processes",
+    "Destino": "postgresql://samuel@127.0.0.1:5432/g_processes_teste (esquema public)",
+    "Validação": "0 erro(s), 7 aviso(s)"
+  },
+  "achados": [
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Carácter NUL (\\0) em texto",
+      "objeto": "error_logs.descricao",
+      "mensagem": "86 linha(s); o PostgreSQL não aceita \\0 em texto e ele será removido."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Carácter NUL (\\0) em texto",
+      "objeto": "error_logs.error_message",
+      "mensagem": "1 linha(s); o PostgreSQL não aceita \\0 em texto e ele será removido."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Carácter NUL (\\0) em texto",
+      "objeto": "error_logs.stack_trace",
+      "mensagem": "1 linha(s); o PostgreSQL não aceita \\0 em texto e ele será removido."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Carácter NUL (\\0) em texto",
+      "objeto": "notification.conteudo",
+      "mensagem": "107 linha(s); o PostgreSQL não aceita \\0 em texto e ele será removido."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Índices renomeados",
+      "objeto": "165 índices",
+      "mensagem": "no PostgreSQL os nomes de índice são únicos por esquema; ficam <tabela>_<índice>."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "anotacoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "encaminhamento",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "estados",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "finalidade",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "funcao",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "local_entrada",
+      "mensagem": "created_at, updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "numeracao",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "permissoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "permissoes_user",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "requerente",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Tabela sem chave primária",
+      "objeto": "requerente_backup_20261017",
+      "mensagem": "a comparação linha a linha é feita por conjunto de linhas (mais lenta, sem indicar o campo)."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "requerente_backup_20261017",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_anotacoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_documento",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_entidade",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_usuario",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "urgencia",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "users",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "visibilidade_processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Trigger não migrado",
+      "objeto": "requerente.trg_requerente_obrigatorio_insert",
+      "mensagem": "reescreva em PL/pgSQL."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Trigger não migrado",
+      "objeto": "requerente.trg_requerente_obrigatorio_update",
+      "mensagem": "reescreva em PL/pgSQL."
+    }
+  ],
+  "migracao": {},
+  "verificacao": {}
+}

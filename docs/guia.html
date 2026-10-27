@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<title>Guia do Migrador MySQL → PostgreSQL</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root {
+    --tinta: #1d2430; --suave: #5b6576; --linha: #d9dee6; --fundo: #f4f6f9;
+    --azul: #1f5fa8; --azul-claro: #e6eef8; --verde: #1e7a46; --verde-claro: #e5f3eb;
+    --laranja: #a65b00; --laranja-claro: #fbf0e1; --vermelho: #a8322d; --vermelho-claro: #f8e6e5;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "DejaVu Sans", "Noto Sans", Arial, sans-serif; color: var(--tinta);
+         font-size: 10pt; line-height: 1.5; margin: 0; background: #fff; }
+  h1 { font-size: 22pt; margin: 0 0 4mm; line-height: 1.2; }
+  h2 { font-size: 14pt; color: var(--azul); margin: 9mm 0 3mm; padding-bottom: 1.5mm;
+       border-bottom: 1.5px solid var(--azul); break-after: avoid; }
+  h3 { font-size: 11pt; margin: 5mm 0 2mm; break-after: avoid; }
+  p { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1mm; }
+  code { font-family: "DejaVu Sans Mono", monospace; font-size: 8.6pt; background: var(--fundo);
+         padding: 0.2mm 1mm; border-radius: 2px; }
+  pre { font-family: "DejaVu Sans Mono", monospace; font-size: 8.3pt; line-height: 1.45;
+        background: #1f2733; color: #e8edf4; padding: 3mm 4mm; border-radius: 4px;
+        white-space: pre-wrap; word-break: break-word; margin: 0 0 3mm; break-inside: avoid; }
+  pre .c { color: #9fb3c8; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9pt; break-inside: auto; }
+  th, td { border: 1px solid var(--linha); padding: 1.6mm 2.2mm; text-align: left; vertical-align: top; }
+  th { background: var(--fundo); font-weight: bold; }
+  tr { break-inside: avoid; }
+  .pagina { break-before: page; }
+  .nota { border-left: 3px solid var(--azul); background: var(--azul-claro); padding: 2.5mm 4mm;
+          margin: 0 0 4mm; break-inside: avoid; }
+  .aviso { border-left: 3px solid var(--laranja); background: var(--laranja-claro); padding: 2.5mm 4mm;
+           margin: 0 0 4mm; break-inside: avoid; }
+  .ok { border-left: 3px solid var(--verde); background: var(--verde-claro); padding: 2.5mm 4mm;
+        margin: 0 0 4mm; break-inside: avoid; }
+  .nota p:last-child, .aviso p:last-child, .ok p:last-child { margin-bottom: 0; }
+
+  /* Capa */
+  .capa { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .capa .topo { border-top: 6px solid var(--azul); padding-top: 12mm; }
+  .capa .sub { font-size: 13pt; color: var(--suave); margin-bottom: 10mm; }
+  .capa .resumo { font-size: 10.5pt; max-width: 150mm; }
+  .capa .meta { color: var(--suave); font-size: 9.5pt; border-top: 1px solid var(--linha); padding-top: 4mm; }
+  .numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 10mm 0; }
+  .numeros div { background: var(--fundo); border-radius: 4px; padding: 4mm; }
+  .numeros b { display: block; font-size: 18pt; color: var(--azul); line-height: 1.1; }
+  .numeros span { font-size: 8.5pt; color: var(--suave); }
+
+  /* Índice */
+  .indice ol { columns: 2; column-gap: 10mm; }
+
+  /* Fluxo */
+  .fluxo { display: grid; grid-template-columns: 1fr 6mm 1fr 6mm 1fr; align-items: stretch; margin: 2mm 0 5mm; }
+  .fase { border: 1.5px solid var(--azul); border-radius: 5px; overflow: hidden; break-inside: avoid; }
+  .fase .cab { background: var(--azul); color: #fff; padding: 2mm 3mm; font-weight: bold; font-size: 10pt; }
+  .fase .cab small { display: block; font-weight: normal; opacity: .85; font-size: 8pt; }
+  .fase ol { margin: 2.5mm 0 2.5mm; padding-left: 7mm; font-size: 8.6pt; }
+  .fase li { margin-bottom: 0.8mm; }
+  .seta { display: flex; align-items: center; justify-content: center; color: var(--azul); font-size: 14pt; }
+  .fase.v .cab { background: var(--verde); } .fase.v { border-color: var(--verde); }
+  .fase.m .cab { background: #2d4a73; } .fase.m { border-color: #2d4a73; }
+
+  .passo { display: grid; grid-template-columns: 9mm 1fr; gap: 3mm; margin-bottom: 3mm; break-inside: avoid; }
+  .passo .n { width: 8mm; height: 8mm; border-radius: 50%; background: var(--azul); color: #fff;
+              font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 9pt; }
+  .passo h4 { margin: 0.5mm 0 1mm; font-size: 10pt; }
+  .passo p { margin: 0; }
+
+  .exemplo { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-bottom: 4mm; break-inside: avoid; }
+  .exemplo > div { border: 1px solid var(--linha); border-radius: 4px; padding: 3mm; }
+  .exemplo h4 { margin: 0 0 2mm; font-size: 9.5pt; }
+  .mau h4 { color: var(--vermelho); } .bom h4 { color: var(--verde); }
+
+  .teste { break-inside: avoid; border: 1px solid var(--linha); border-radius: 5px; padding: 3.5mm 4mm 1mm; margin-bottom: 5mm; }
+  .teste > h3 { margin-top: 0; }
+  .teste .obj { color: var(--suave); margin-bottom: 3mm; }
+  .check li { list-style: none; position: relative; }
+  .check li::before { content: "☐"; position: absolute; left: -5.5mm; }
+  .rodape { color: var(--suave); font-size: 8.5pt; margin-top: 8mm; border-top: 1px solid var(--linha); padding-top: 3mm; }
+</style>
+</head>
+<body>
+
+<!-- ============================== CAPA ============================== -->
+<section class="capa">
+  <div class="topo">
+    <h1>Guia do Migrador<br>MySQL → PostgreSQL</h1>
+    <div class="sub">Como funciona o script <code>migrar.py</code> e como testá-lo</div>
+    <p class="resumo">O script migra uma base MySQL para PostgreSQL em três fases: valida o esquema e os dados
+      antes de mexer no destino, copia tudo e, no fim, compara linha a linha e campo a campo para garantir que a
+      conversão ficou certa. Resolve o que o pgloader deixava por fazer: FKs que viravam campos normais,
+      registos órfãos, pesquisas de texto que passavam a distinguir maiúsculas, e triggers, procedures, views,
+      eventos, índices FULLTEXT e colunas espaciais que ficavam para trás.</p>
+    <div class="numeros">
+      <div><b>91</b><span>tabelas da base real migradas sem diferenças</span></div>
+      <div><b>115/115</b><span>FKs criadas e validadas</span></div>
+      <div><b>218</b><span>colunas de texto a ignorar maiúsculas e acentos</span></div>
+      <div><b>2/2</b><span>triggers traduzidos para PL/pgSQL e testados</span></div>
+    </div>
+  </div>
+  <div class="meta">
+    Samuel Massinga · 27-10-2026<br>
+    Testado com MySQL 8.0 e PostgreSQL 18.6<br>Ficheiros em <code>Acsun/Testing/migrador/</code>: <code>migrar.py</code> (script), <code>README.md</code>, <code>testes/casos.sql</code> (base de testes), <code>docs/guia.html</code> (fonte deste PDF), <code>relatorios/</code> (relatório de cada execução)
+  </div>
+</section>
+
+<!-- ============================== ÍNDICE ============================== -->
+<section class="pagina indice">
+  <h2>Conteúdo</h2>
+  <ol>
+    <li>Porque não basta o pgloader</li>
+    <li>Visão geral do fluxo</li>
+    <li>O fluxo passo a passo</li>
+    <li>Registos órfãos: pais criados antes da FK</li>
+    <li>Maiúsculas e acentos: WHERE igual ao MySQL</li>
+    <li>Conversão de tipos e objetos de código</li>
+    <li>Executar passo a passo</li>
+    <li>Como testar (8 testes)</li>
+    <li>Checklist para o dia da migração</li>
+    <li>Problemas comuns</li>
+  </ol>
+
+  <h2>1. Porque não basta o pgloader</h2>
+  <p>Na migração da base <code>g_processes</code> com o pgloader encontrámos estes problemas:</p>
+  <table>
+    <tr><th style="width:38%">Problema com o pgloader</th><th>Como o script resolve</th></tr>
+    <tr><td>A versão do Ubuntu (3.6.10) falha com o MySQL 8 (<code>76 fell through ECASE</code>): não conhece
+      a collation <code>utf8mb3_tolower_ci</code>.</td>
+      <td>É Python puro (<code>pymysql</code> + <code>psycopg</code>); não depende da versão do pgloader.</td></tr>
+    <tr><td>Quando uma FK falha (registos órfãos), não a cria: a coluna fica um campo normal no PostgreSQL.</td>
+      <td>Antes da FK, insere no pai os registos em falta. A FK é sempre criada e fica válida.</td></tr>
+    <tr><td>Perde <code>AUTO_INCREMENT</code>, valores por defeito, <code>NOT NULL</code> em datas e
+      <code>ON UPDATE CURRENT_TIMESTAMP</code>.</td>
+      <td>Recria tudo: identity com a sequência no maior id, defaults traduzidos, triggers para o ON UPDATE.</td></tr>
+    <tr><td>Texto passa a distinguir maiúsculas: <code>WHERE email = 'Ana@x.com'</code> deixa de encontrar
+      <code>ana@x.com</code>.</td>
+      <td>Aplica uma collation que ignora maiúsculas e acentos, como as <code>_ci</code> do MySQL.</td></tr>
+    <tr><td>Não migra triggers, procedures, funções, eventos, views, FULLTEXT nem colunas espaciais.</td>
+      <td>Traduz o código para PL/pgSQL e cria-o no fim; FULLTEXT vira GIN; espaciais usam PostGIS.</td></tr>
+    <tr><td>Não diz se os dados chegaram todos iguais.</td>
+      <td>Compara cada linha, cada campo e o tamanho de cada coluna, e grava um relatório.</td></tr>
+  </table>
+</section>
+
+<!-- ============================== FLUXO ============================== -->
+<section class="pagina">
+  <h2>2. Visão geral do fluxo</h2>
+  <p>O script corre três fases, por esta ordem. Se a validação encontrar erros, pára antes de tocar no destino.</p>
+  <div class="fluxo">
+    <div class="fase">
+      <div class="cab">Fase 1 · Validar<small>só lê; não altera nada</small></div>
+      <ol>
+        <li>Ligar às duas bases</li>
+        <li>Ler o esquema MySQL</li>
+        <li>Analisar os dados</li>
+        <li>Planear tipos e nomes</li>
+        <li>Mostrar incongruências</li>
+      </ol>
+    </div>
+    <div class="seta">➜</div>
+    <div class="fase m">
+      <div class="cab">Fase 2 · Migrar<small>escreve no PostgreSQL</small></div>
+      <ol start="6">
+        <li>Criar collations e tabelas</li>
+        <li>Copiar os dados</li>
+        <li>Chaves primárias e índices</li>
+        <li>Acertar auto-incrementos</li>
+        <li>Criar pais em falta</li>
+        <li>Triggers ON UPDATE</li>
+        <li>Criar e validar as FKs; criar triggers, procedures, views e eventos traduzidos</li>
+      </ol>
+    </div>
+    <div class="seta">➜</div>
+    <div class="fase v">
+      <div class="cab">Fase 3 · Verificar<small>compara as duas bases</small></div>
+      <ol start="13">
+        <li>Colunas, linhas, campos, tamanhos, FKs, índices, sequências, objetos e views</li>
+        <li>Gravar o relatório e devolver o código de saída</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="nota"><p><b>Porque é que as FKs ficam para o fim?</b> Se as FKs existissem durante a cópia, cada
+    linha teria de esperar pela tabela-pai e qualquer órfão parava a migração. Criando-as no fim, a cópia
+    nunca bloqueia, e o script consegue tratar os órfãos antes de as criar.</p></div>
+
+  <p>Com <code>--modo</code> pode correr só uma parte:</p>
+  <table>
+    <tr><th style="width:22%">Modo</th><th>O que faz</th><th style="width:30%">Quando usar</th></tr>
+    <tr><td><code>validar</code></td><td>Só a fase 1.</td><td>Ver os problemas sem mexer no destino.</td></tr>
+    <tr><td><code>migrar</code></td><td>Fases 1 e 2.</td><td>Migrar sem comparar (mais rápido).</td></tr>
+    <tr><td><code>verificar</code></td><td>Fases 1 e 3.</td><td>Voltar a comparar uma migração já feita.</td></tr>
+    <tr><td><code>tudo</code> (padrão)</td><td>As três fases.</td><td>Migração normal.</td></tr>
+  </table>
+</section>
+
+<!-- ============================== PASSO A PASSO ============================== -->
+<section class="pagina">
+  <h2>3. O fluxo passo a passo</h2>
+  <h3>Fase 1 — Validar</h3>
+  <div class="passo"><div class="n">1</div><div><h4>Ligar às bases</h4>
+    <p>Lê os dados de conexão dos URLs <code>--origem</code>/<code>--destino</code> ou pergunta-os no terminal (a
+    senha é pedida sem aparecer no ecrã). As duas ligações usam UTC, para as datas não mudarem de hora.</p></div></div>
+  <div class="passo"><div class="n">2</div><div><h4>Ler o esquema do MySQL</h4>
+    <p>Lê do <code>information_schema</code>: tabelas, colunas (tipo, NULL, valor por defeito, collation),
+    índices, FKs, triggers, views, procedures e eventos.</p></div></div>
+  <div class="passo"><div class="n">3</div><div><h4>Analisar os dados</h4>
+    <p>Lê cada tabela uma vez e conta o que não passa direto para PostgreSQL: datas <code>0000-00-00</code>,
+    <code>tinyint(1)</code> com valores além de 0/1, carácter <code>\0</code> em texto, ENUM com <code>''</code>,
+    <code>TIME</code> negativo ou acima de 24h, <code>bigint unsigned</code> acima do limite.</p></div></div>
+  <div class="passo"><div class="n">4</div><div><h4>Planear</h4>
+    <p>Decide o tipo de cada coluna no PostgreSQL (secção 6), a collation de texto (secção 5), os valores por
+    defeito e os nomes de índices e constraints (únicos no esquema, até 63 bytes).</p></div></div>
+  <div class="passo"><div class="n">5</div><div><h4>Validar e mostrar incongruências</h4>
+    <p>Verifica as FKs (tipos compatíveis, pai com chave única, órfãos), as permissões no PostgreSQL e se as
+    tabelas já existem. Mostra tudo em três níveis: <b>ERRO</b> (impede a migração, salvo com
+    <code>--forcar</code>), <b>AVISO</b> (migra, mas reveja) e <b>INFO</b>.</p></div></div>
+
+  <h3>Fase 2 — Migrar</h3>
+  <div class="passo"><div class="n">6</div><div><h4>Criar collations e tabelas</h4>
+    <p>Cria o esquema, as collations <code>mysql_ci_ai</code>/<code>mysql_ci</code>, a tabela
+    <code>migracao.registos_criados</code> e as tabelas com colunas, NOT NULL, defaults, CHECK dos ENUM e
+    comentários. Ainda sem chaves nem FKs. Com <code>--substituir</code> apaga antes as que já existem.</p></div></div>
+  <div class="passo"><div class="n">7</div><div><h4>Copiar os dados</h4>
+    <p>Tabela a tabela, em lotes de 5000 linhas (<code>--lote</code>), com o comando COPY do PostgreSQL (o mais
+    rápido). Pelo caminho converte valores: datas zero para NULL, remove <code>\0</code>, 0/1 para booleano.
+    Cada tabela é uma transação: se falhar, não fica a meio.</p></div></div>
+  <div class="passo"><div class="n">8</div><div><h4>Chaves primárias, índices e UNIQUE</h4>
+    <p>Criados depois dos dados porque é muito mais rápido do que actualizá-los linha a linha. Se uma FK aponta
+    para colunas sem índice único (o MySQL permite, o PostgreSQL não), cria esse UNIQUE.</p></div></div>
+  <div class="passo"><div class="n">9</div><div><h4>Acertar auto-incrementos</h4>
+    <p>Cada coluna identity passa a continuar a partir do maior id existente, para o próximo INSERT não colidir.</p></div></div>
+  <div class="passo"><div class="n">10</div><div><h4>Criar os pais em falta</h4>
+    <p>Para cada FK com órfãos, insere no pai os registos com as chaves em falta (secção 4).</p></div></div>
+  <div class="passo"><div class="n">11</div><div><h4>Triggers de ON UPDATE</h4>
+    <p>O PostgreSQL não tem <code>ON UPDATE CURRENT_TIMESTAMP</code>; o script cria um trigger que actualiza a
+    coluna (ex.: <code>updated_at</code>) sempre que a linha muda.</p></div></div>
+  <div class="passo"><div class="n">12</div><div><h4>Criar as FKs e os objetos de código</h4>
+    <p>Cria cada FK e valida-a contra os dados existentes; com os pais criados no passo 10, ficam todas válidas.
+    Depois cria as funções, procedures, views, triggers e eventos traduzidos (secção 6). Ficam para o fim de
+    propósito: se os triggers existissem durante a cópia, disparavam em cada linha copiada.</p></div></div>
+
+  <h3>Fase 3 — Verificar</h3>
+  <div class="passo"><div class="n">13</div><div><h4>Comparar as duas bases</h4>
+    <p>Para cada tabela: confirma as colunas (tipo, NULL, default, collation); lê as duas bases ordenadas pela
+    chave primária e compara <b>cada linha e cada campo</b>; soma o tamanho e os valores preenchidos de cada
+    coluna. Depois confirma que todas as FKs, índices e sequências existem. Os registos criados no passo 10 são
+    reconhecidos e não contam como diferença.</p></div></div>
+  <div class="passo"><div class="n">14</div><div><h4>Relatório e resultado</h4>
+    <p>Grava em <code>relatorios/</code> um <code>.md</code> (legível), um <code>.json</code> (tudo, com
+    exemplos das diferenças) e um <code>.sql</code> (comandos executados). Termina com um código de saída
+    (secção 7).</p></div></div>
+</section>
+
+<!-- ============================== ÓRFÃOS ============================== -->
+<section>
+  <h2>4. Registos órfãos: pais criados antes da FK</h2>
+  <p>Um <b>órfão</b> é uma linha que aponta para um registo que não existe. Exemplo: a tabela
+  <code>anexos</code> tem <code>processo_id = 999</code>, mas não há processo 999. No MySQL isto acontece quando
+  os dados entraram antes de a FK existir ou com <code>FOREIGN_KEY_CHECKS=0</code>.</p>
+
+  <div class="exemplo">
+    <div class="mau"><h4>pgloader</h4>
+      <p>A FK falha → não é criada → <code>processo_id</code> fica um campo normal. A base deixa de impedir
+      novos órfãos.</p></div>
+    <div class="bom"><h4>migrar.py (padrão)</h4>
+      <p>Insere em <code>processo</code> um registo com id 999 → cria a FK → a FK fica válida e protege os dados
+      daí para a frente.</p></div>
+  </div>
+
+  <h3>Que valores levam os registos criados</h3>
+  <p>Só a chave vem do filho. Os outros campos obrigatórios (NOT NULL sem valor por defeito) recebem:</p>
+  <table>
+    <tr><th style="width:35%">Tipo de campo</th><th>Valor</th></tr>
+    <tr><td>Texto</td><td><code>REGISTO EM FALTA (criado na migração)</code> (cortado ao tamanho da coluna)</td></tr>
+    <tr><td>Texto ou número com UNIQUE</td><td>Um valor que não se repete (maior valor + 1, ou texto aleatório)</td></tr>
+    <tr><td>Número</td><td><code>0</code></td></tr>
+    <tr><td>Data / data e hora</td><td><code>1970-01-01</code></td></tr>
+    <tr><td>ENUM</td><td>O primeiro valor da lista</td></tr>
+    <tr><td>Booleano</td><td><code>false</code></td></tr>
+    <tr><td>Campo que é FK para outra tabela</td><td>Um registo que já exista nessa tabela</td></tr>
+  </table>
+
+  <h3>Onde ficam anotados</h3>
+  <p>Cada registo criado é gravado em <code>migracao.registos_criados</code>, num esquema separado:</p>
+  <pre>SELECT tabela, chave, motivo FROM migracao.registos_criados;
+
+ tabela |  chave   |               motivo
+--------+----------+------------------------------------
+ pais   | ["XX"]   | FK fk_cid_pais: cidade(pais)
+ zona   | ["MZ",9] | FK fk_ponto_zona: ponto(pais, num)</pre>
+  <p>Depois da migração pode completar esses registos com os dados certos, ou apagar os filhos que não
+  interessam e a seguir os registos criados.</p>
+
+  <div class="aviso"><p><b>Alternativa:</b> com <code>--orfaos not-valid</code> os dados ficam exactamente como no
+    MySQL e a FK é criada <code>NOT VALID</code>: existe no esquema e protege os dados novos, mas as linhas antigas
+    não são verificadas. Depois de corrigir os órfãos, valide-a com
+    <code>ALTER TABLE anexos VALIDATE CONSTRAINT nome_da_fk;</code></p></div>
+
+  <div class="nota"><p><b>Melhor ainda:</b> corrigir os órfãos no MySQL antes de migrar, como foi feito com os
+    anexos 114–116 e o error_log 8. A validação (fase 1) lista cada órfão com exemplos.</p></div>
+</section>
+
+<!-- ============================== MAIÚSCULAS ============================== -->
+<section>
+  <h2>5. Maiúsculas e acentos: WHERE igual ao MySQL</h2>
+  <p>As colunas de texto da base usam <code>utf8mb4_general_ci</code> e <code>utf8mb4_0900_ai_ci</code>. O
+  <code>ci</code> quer dizer <i>case insensitive</i>: o MySQL ignora maiúsculas e acentos nas comparações. O
+  PostgreSQL, por defeito, compara de forma exacta. Sem tratamento, logins e pesquisas da API deixariam de
+  encontrar registos.</p>
+
+  <table>
+    <tr><th>Consulta</th><th style="width:16%">MySQL</th><th style="width:20%">PostgreSQL normal</th><th style="width:22%">PostgreSQL com o script</th></tr>
+    <tr><td><code>WHERE email = 'JOSE@GMAIL.COM'</code><br>(gravado <code>jose@gmail.com</code>)</td><td>encontra</td><td>não encontra</td><td>encontra</td></tr>
+    <tr><td><code>WHERE nome = 'MOCAMBIQUE'</code><br>(gravado <code>Moçambique</code>)</td><td>encontra</td><td>não encontra</td><td>encontra</td></tr>
+    <tr><td><code>WHERE nome LIKE 'orf%'</code><br>(gravado <code>Órfã</code>)</td><td>encontra</td><td>não encontra</td><td>encontra</td></tr>
+    <tr><td>UNIQUE com <code>'MZ'</code> e <code>'mz'</code></td><td>recusa</td><td>aceita os dois</td><td>recusa</td></tr>
+  </table>
+
+  <h3>Como funciona</h3>
+  <p>O script cria no esquema de destino duas <i>collations</i> ICU não determinísticas e aplica-as a cada coluna
+  de texto conforme a collation que ela tinha no MySQL:</p>
+  <table>
+    <tr><th>Collation no MySQL</th><th>No PostgreSQL</th><th>Regra</th></tr>
+    <tr><td><code>*_ci</code>, <code>*_ai_ci</code> (general, unicode, 0900)</td><td><code>mysql_ci_ai</code></td><td>ignora maiúsculas e acentos</td></tr>
+    <tr><td><code>*_as_ci</code></td><td><code>mysql_ci</code></td><td>ignora só maiúsculas</td></tr>
+    <tr><td><code>*_bin</code>, <code>*_cs</code></td><td>(nenhuma)</td><td>comparação exacta</td></tr>
+  </table>
+  <p>Com isto, <code>=</code>, <code>IN</code>, <code>LIKE</code>, <code>GROUP BY</code>, <code>DISTINCT</code>,
+  <code>UNIQUE</code> e FKs comportam-se como no MySQL, sem mudar o código da API. No <code>psql</code> a coluna
+  aparece assim:</p>
+  <pre> Column |         Type          |  Collation
+--------+-----------------------+-------------
+ email  | character varying(255)| mysql_ci_ai</pre>
+
+  <div class="aviso">
+    <p><b>Limitações</b></p>
+    <ul>
+      <li><b>PostgreSQL 18 ou superior</b> para <code>LIKE</code>. Em versões anteriores, LIKE dá erro nestas colunas
+        (o script avisa na validação). O servidor actual é o 18.6.</li>
+      <li><code>ILIKE</code> e expressões regulares (<code>~</code>) dão erro nestas colunas. Use
+        <code>LIKE</code>, que já ignora maiúsculas. A API usa <code>.like()</code> 51 vezes e nunca
+        <code>ilike</code> nem regex em SQL, por isso não precisa de alterações.</li>
+      <li>Para a comparação normal do PostgreSQL use <code>--comparacao-texto exata</code>; nesse caso a aplicação tem
+        de usar <code>lower()</code> ou <code>ILIKE</code>.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================== TIPOS ============================== -->
+<section>
+  <h2>6. Conversão de tipos e objetos de código</h2>
+  <table>
+    <tr><th style="width:38%">MySQL</th><th>PostgreSQL</th></tr>
+    <tr><td><code>int AUTO_INCREMENT</code></td><td><code>integer GENERATED BY DEFAULT AS IDENTITY</code></td></tr>
+    <tr><td><code>tinyint(1)</code></td><td><code>boolean</code> (ou <code>smallint</code> se houver valores além de 0/1)</td></tr>
+    <tr><td><code>tinyint</code>, <code>smallint</code>, <code>mediumint</code>, <code>int</code></td><td><code>smallint</code> / <code>integer</code> (unsigned sobe um tamanho)</td></tr>
+    <tr><td><code>bigint unsigned</code></td><td><code>numeric(20)</code></td></tr>
+    <tr><td><code>decimal(p,s)</code> / <code>float</code> / <code>double</code></td><td><code>numeric(p,s)</code> / <code>real</code> / <code>double precision</code></td></tr>
+    <tr><td><code>varchar(n)</code>, <code>char(n)</code></td><td><code>varchar(n)</code> + collation</td></tr>
+    <tr><td><code>text</code>, <code>mediumtext</code>, <code>longtext</code>, <code>set</code></td><td><code>text</code> + collation</td></tr>
+    <tr><td><code>enum('a','b')</code></td><td><code>varchar</code> + <code>CHECK (col IN ('a','b'))</code></td></tr>
+    <tr><td><code>datetime</code> / <code>timestamp</code> / <code>date</code></td><td><code>timestamp</code> / <code>timestamptz</code> / <code>date</code></td></tr>
+    <tr><td><code>time</code></td><td><code>time</code> (ou <code>interval</code> se passar das 24h)</td></tr>
+    <tr><td><code>json</code></td><td><code>jsonb</code></td></tr>
+    <tr><td><code>blob</code>, <code>binary</code>, <code>varbinary</code></td><td><code>bytea</code></td></tr>
+    <tr><td><code>bit(1)</code> / <code>bit(n)</code></td><td><code>boolean</code> / <code>bigint</code></td></tr>
+    <tr><td><code>ON UPDATE CURRENT_TIMESTAMP</code></td><td>trigger <code>migr_on_update_timestamp</code></td></tr>
+  </table>
+
+  <p><code>tinyint(1)</code> cujo nome termina em <code>_id</code> ou que faz parte de uma FK fica <code>smallint</code>:
+  é um número, não um sim/não. Na base real isto acontece com <code>grupo.inferior_id</code>, que a API trata como
+  <code>Integer</code>.</p>
+
+  <h3>Triggers, procedures, funções, eventos e views</h3>
+  <p>O script traduz o código do MySQL para PL/pgSQL (ficheiro <code>objetos.py</code>). O SQL normal
+  (expressões, SELECT, INSERT...) é traduzido com a biblioteca <code>sqlglot</code>; a parte procedimental é
+  traduzida pelo próprio script:</p>
+  <table>
+    <tr><th style="width:42%">MySQL</th><th>PostgreSQL</th></tr>
+    <tr><td><code>CREATE TRIGGER t BEFORE INSERT ... BEGIN ... END</code></td><td>função <code>t_fn()</code> em PL/pgSQL + <code>CREATE TRIGGER t ... EXECUTE FUNCTION t_fn()</code></td></tr>
+    <tr><td><code>PROCEDURE</code> / <code>FUNCTION</code></td><td><code>PROCEDURE</code> / <code>FUNCTION ... LANGUAGE plpgsql</code></td></tr>
+    <tr><td><code>EVENT ... EVERY 1 DAY STARTS '... 03:30'</code></td><td>procedure <code>evento_&lt;nome&gt;()</code>, agendada no pg_cron (<code>30 3 * * *</code>) ou, sem pg_cron, com a linha de crontab pronta no relatório</td></tr>
+    <tr><td><code>VIEW</code></td><td><code>CREATE VIEW</code> com o SQL traduzido (criadas pela ordem das dependências)</td></tr>
+    <tr><td><code>DECLARE</code>, <code>SET</code>, <code>IF/ELSEIF</code>, <code>CASE</code>, <code>WHILE</code>, <code>REPEAT</code>, <code>LOOP</code>, <code>LEAVE</code></td><td>equivalentes em PL/pgSQL</td></tr>
+    <tr><td><code>SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = m</code></td><td><code>RAISE EXCEPTION USING ERRCODE = '45000', MESSAGE = m</code></td></tr>
+    <tr><td><code>IFNULL</code>, <code>&lt;=&gt;</code>, <code>CONCAT</code>, <code>IF()</code>, <code>DATE_ADD</code>…</td><td><code>COALESCE</code>, <code>IS NOT DISTINCT FROM</code>, <code>||</code>, <code>CASE</code>, <code>+ INTERVAL</code>…</td></tr>
+    <tr><td><code>estado = 1</code> numa coluna que passou a boolean</td><td><code>estado = TRUE</code></td></tr>
+  </table>
+  <p>A verificação (fase 3) confirma que cada objeto existe e que cada <b>view devolve exactamente as mesmas
+  linhas</b> que no MySQL. Nos testes, os triggers, a procedure e a função traduzidos deram os mesmos resultados
+  e as mesmas mensagens de erro nas duas bases.</p>
+
+  <div class="aviso"><p><b>O que ainda precisa de revisão manual:</b> cursores e handlers
+    (<code>DECLARE ... CURSOR/HANDLER</code>), variáveis de sessão (<code>@var</code>) e SQL dinâmico
+    (<code>PREPARE</code>/<code>EXECUTE</code>). Esses objetos não são criados: vão para
+    <code>relatorios/migracao_&lt;data&gt;_por_rever.sql</code>, com o código original, o motivo e a tentativa de
+    tradução, prontos a corrigir e executar com <code>psql -f</code>. Na base real não há nenhum.</p></div>
+
+  <h3>Índices FULLTEXT e colunas espaciais</h3>
+  <ul>
+    <li><b>FULLTEXT</b> → índice GIN sobre <code>to_tsvector('simple', coalesce(coluna, ''))</code>. As pesquisas
+      <code>MATCH(col) AGAINST('texto')</code> da aplicação passam a
+      <code>to_tsvector('simple', coalesce(col, '')) @@ plainto_tsquery('simple', 'texto')</code>.</li>
+    <li><b>Espaciais</b> (<code>point</code>, <code>polygon</code>, <code>geometry</code>…) → PostGIS
+      <code>geometry(Point,4326)</code> etc., com o SRID e a ordem longitude/latitude certos; índices
+      <code>SPATIAL</code> → GiST. Precisa do PostGIS no servidor (<code>sudo apt install postgresql-18-postgis-3</code>);
+      sem ele a validação dá ERRO e explica o que instalar.</li>
+  </ul>
+</section>
+
+<!-- ============================== INSTALAÇÃO ============================== -->
+<section>
+  <h2>7. Executar passo a passo</h2>
+  <p>Do zero até aos resultados verificados. Os comandos são para Linux (Ubuntu); o terminal deve estar na pasta
+  do script.</p>
+
+  <div class="passo"><div class="n">1</div><div><h4>Instalar o Python (uma vez por máquina)</h4>
+    <p>É preciso Python 3.10 ou mais recente, com o módulo <code>venv</code>:</p>
+    <pre>python3 --version                                   <span class="c"># deve mostrar 3.10 ou superior</span>
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip</pre>
+    <p>Para os testes de verificação também ajudam os clientes <code>mysql</code> e <code>psql</code>
+    (<code>sudo apt install -y mysql-client postgresql-client</code>) e o Docker (só para os testes 1–6).</p></div></div>
+
+  <div class="passo"><div class="n">2</div><div><h4>Ter a pasta do script</h4>
+    <p>A pasta <code>migrador/</code> tem tudo o que é preciso:</p>
+    <pre>migrador/
+├── migrar.py           <span class="c"># o script principal</span>
+├── objetos.py          <span class="c"># tradução de triggers, procedures, views, eventos</span>
+├── requirements.txt    <span class="c"># dependências Python</span>
+├── testes/             <span class="c"># casos.sql e casos_espaciais.sql</span>
+└── docs/guia.html      <span class="c"># fonte deste guia</span></pre>
+    <pre>cd ~/Programming/"Projects - Real"/Acsun/Testing/migrador</pre></div></div>
+
+  <div class="passo"><div class="n">3</div><div><h4>Criar o ambiente Python e instalar as dependências (uma vez)</h4>
+    <p>O ambiente virtual (<code>.venv</code>) guarda as bibliotecas dentro da pasta, sem mexer no Python do sistema:</p>
+    <pre>python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt           <span class="c"># pymysql, psycopg, sqlglot</span>
+.venv/bin/python -c "import pymysql, psycopg, sqlglot; print('ok')"   <span class="c"># deve mostrar ok</span></pre></div></div>
+
+  <div class="passo"><div class="n">4</div><div><h4>Preparar as duas bases</h4>
+    <p><b>MySQL (origem):</b> um utilizador que só leia chega. Como administrador do MySQL:</p>
+    <pre>CREATE USER 'migra'@'%' IDENTIFIED BY '...';
+GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON g_processes.* TO 'migra'@'%';
+GRANT SHOW_ROUTINE ON *.* TO 'migra'@'%';    <span class="c">-- MySQL 8.0.20+: ler o código de procedures e funções</span></pre>
+    <p><b>PostgreSQL (destino):</b> uma base vazia, de um utilizador que possa criar tabelas:</p>
+    <pre>createdb -h 127.0.0.1 -U samuel g_processes</pre>
+    <p>Confirme que consegue ligar às duas:</p>
+    <pre>mysql -h 127.0.0.1 -u migra -p g_processes -e "SELECT COUNT(*) FROM information_schema.tables"
+psql  -h 127.0.0.1 -U samuel -d g_processes -c "SELECT version()"</pre></div></div>
+
+  <div class="passo"><div class="n">5</div><div><h4>Validar (sem mexer no destino)</h4>
+    <pre>.venv/bin/python migrar.py --modo validar \
+  --origem  mysql://migra@127.0.0.1:3306/g_processes \
+  --destino postgresql://samuel@127.0.0.1:5432/g_processes</pre>
+    <p>As senhas são pedidas no terminal. Leia a lista: <b>ERRO</b> tem de ser corrigido antes de migrar,
+    <b>AVISO</b> deve ser revisto, <b>INFO</b> é só informação. Na base real dá 0 erros.</p></div></div>
+
+  <div class="passo"><div class="n">6</div><div><h4>Migrar e verificar</h4>
+    <pre>.venv/bin/python migrar.py \
+  --origem  mysql://migra@127.0.0.1:3306/g_processes \
+  --destino postgresql://samuel@127.0.0.1:5432/g_processes</pre>
+    <p>O script repete a validação, pergunta <code>Migrar 91 tabelas ...? [s/N]</code> (responda <code>s</code>),
+    migra e verifica. Se a base de destino já tiver as tabelas, junte <code>--substituir</code>.</p></div></div>
+
+  <div class="passo"><div class="n">7</div><div><h4>Verificar os resultados</h4>
+    <ol>
+      <li><b>A última linha</b> do terminal deve dizer
+        <code>Concluído: os dados no PostgreSQL são iguais aos do MySQL</code>, e o código de saída deve ser 0:
+        <pre>echo $?</pre></li>
+      <li><b>O relatório</b> <code>relatorios/migracao_&lt;data&gt;.md</code>: resumo, avisos e a tabela por
+        tabela (linhas MySQL, linhas PostgreSQL, iguais, diferentes, em falta). O <code>.json</code> tem exemplos de
+        cada diferença; o <code>.sql</code> tem todos os comandos executados.</li>
+      <li><b>Objetos por rever:</b> se existir <code>relatorios/migracao_&lt;data&gt;_por_rever.sql</code>, corrija-o
+        e execute com <code>psql -h 127.0.0.1 -U samuel -d g_processes -f ficheiro.sql</code>.</li>
+      <li><b>Confirmar no PostgreSQL:</b>
+        <pre>psql -h 127.0.0.1 -U samuel -d g_processes
+SELECT count(*) FROM pg_tables WHERE schemaname = 'public';           <span class="c">-- 91 (+ alembic etc.)</span>
+SELECT conname FROM pg_constraint WHERE contype='f' AND NOT convalidated; <span class="c">-- vazio</span>
+SELECT tgname FROM pg_trigger WHERE NOT tgisinternal;                 <span class="c">-- triggers criados</span>
+SELECT * FROM migracao.registos_criados;                              <span class="c">-- registos-pai criados</span>
+\d requerente                                                         <span class="c">-- colunas, collation, triggers</span></pre></li>
+      <li><b>No navegador:</b> Adminer em <code>http://localhost:8080</code> (sistema PostgreSQL).</li>
+      <li><b>Mais tarde:</b> para voltar a comparar as duas bases, sem migrar de novo, use <code>--modo verificar</code>.</li>
+    </ol></div></div>
+
+  <div class="passo"><div class="n">8</div><div><h4>Pôr a API a usar o PostgreSQL</h4>
+    <p>Siga o teste 8 (secção 8) e a checklist da secção 9.</p></div></div>
+
+  <h3>Opções</h3>
+  <table>
+    <tr><th style="width:34%">Opção</th><th>Efeito</th></tr>
+    <tr><td><code>--modo validar|migrar|verificar|tudo</code></td><td>Que fases correr (padrão: tudo).</td></tr>
+    <tr><td><code>--substituir</code></td><td>Apaga e recria as tabelas que já existem no destino.</td></tr>
+    <tr><td><code>--orfaos criar-pais|not-valid</code></td><td>Como tratar órfãos (padrão: criar-pais).</td></tr>
+    <tr><td><code>--sem-objetos</code></td><td>Não traduz triggers, procedures, funções, eventos nem views.</td></tr>
+    <tr><td><code>--comparacao-texto mysql|exata</code></td><td>Texto ignora maiúsculas como no MySQL (padrão) ou não.</td></tr>
+    <tr><td><code>--tabelas a,b</code> / <code>--excluir a,b</code></td><td>Migrar só algumas tabelas / ignorar algumas.</td></tr>
+    <tr><td><code>--esquema nome</code></td><td>Esquema de destino (padrão: public).</td></tr>
+    <tr><td><code>--forcar</code></td><td>Migra mesmo com erros na validação.</td></tr>
+    <tr><td><code>--sim</code></td><td>Não pede confirmação antes de migrar.</td></tr>
+    <tr><td><code>--sem-comparar-linhas</code></td><td>Na verificação só conta linhas (para bases muito grandes).</td></tr>
+    <tr><td><code>--sem-booleanos</code>, <code>--enum-sem-check</code>, <code>--manter-maiusculas</code></td><td>tinyint(1) fica smallint; ENUM sem CHECK; nomes não passam a minúsculas.</td></tr>
+    <tr><td><code>--lote N</code>, <code>--amostras N</code>, <code>--relatorios pasta</code></td><td>Linhas por lote; exemplos de diferenças por tabela; pasta dos relatórios.</td></tr>
+  </table>
+
+  <h3>Códigos de saída</h3>
+  <table>
+    <tr><th style="width:12%">Código</th><th>Significado</th></tr>
+    <tr><td><code>0</code></td><td>Tudo certo: os dados no PostgreSQL são iguais aos do MySQL.</td></tr>
+    <tr><td><code>1</code></td><td>Migrou, mas a verificação encontrou diferenças ou houve erros (ver relatório).</td></tr>
+    <tr><td><code>2</code></td><td>Parou na validação: há erros a corrigir (ou use <code>--forcar</code>).</td></tr>
+    <tr><td><code>3</code></td><td>Não conseguiu ligar a uma das bases.</td></tr>
+    <tr><td><code>130</code></td><td>Interrompido (Ctrl+C).</td></tr>
+  </table>
+</section>
+
+<!-- ============================== TESTES ============================== -->
+<section class="pagina">
+  <h2>8. Como testar</h2>
+  <p>Faça os testes por esta ordem. Os testes 1 a 6 usam bases de teste com os casos difíceis; os testes
+  7 e 8 usam uma <b>cópia</b> da base real. Nunca teste directamente contra a base de produção do PostgreSQL.</p>
+
+  <div class="teste">
+    <h3>Teste 1 — Preparar a base de casos difíceis</h3>
+    <p class="obj">Objectivo: ter um MySQL temporário com dados problemáticos de propósito.</p>
+    <p>O ficheiro <code>testes/casos.sql</code> cria a base <code>casos</code> com: datas zero, órfãos (simples,
+    composto e para coluna sem índice único), chave de texto <code>'PT'</code>/<code>'pt'</code>, unsigned, JSON,
+    BLOB, BIT, TIME acima de 24h, ENUM com <code>''</code>, carácter <code>\0</code>, tabela sem chave primária,
+    view e índice FULLTEXT, e ainda 3 triggers (um deles com cursor, de propósito), uma procedure com ciclo, uma
+    função, um evento e uma view com JOIN.</p>
+    <pre><span class="c"># MySQL temporário na porta 3307 (não mexe no MySQL principal)</span>
+docker run -d --rm --name mysql-teste -e MYSQL_ROOT_PASSWORD=teste -p 3307:3306 mysql:8.0
+<span class="c"># esperar ~20 s até arrancar, depois carregar os casos</span>
+docker exec -i mysql-teste mysql --default-character-set=utf8mb4 -uroot -pteste &lt; testes/casos.sql
+<span class="c"># base de destino vazia</span>
+createdb -h 127.0.0.1 -U samuel casos_teste</pre>
+  </div>
+
+  <div class="teste">
+    <h3>Teste 2 — Migração completa dos casos difíceis</h3>
+    <p class="obj">Objectivo: confirmar que todos os problemas são detectados, tratados e verificados.</p>
+    <pre>.venv/bin/python migrar.py --origem mysql://root:teste@127.0.0.1:3307/casos \
+  --destino postgresql://samuel@127.0.0.1:5432/casos_teste --sim
+echo $?        <span class="c"># deve mostrar 0</span></pre>
+    <p><b>Resultado esperado:</b></p>
+    <ul class="check">
+      <li>Fase 1 lista avisos de datas zero, tinyint(1), TIME, ENUM, <code>\0</code>, FULLTEXT, tabela sem PK, view e
+        <b>3 órfãos</b> (<code>XX</code>, <code>('MZ', 9)</code> e <code>nenhuma</code>). <code>'PT'</code> não aparece
+        como órfão, porque <code>'PT'</code> = <code>'pt'</code>, como no MySQL.</li>
+      <li>Fase 2 mostra <code>3 registo(s)-pai em falta criados</code>, <code>3 FKs criadas (3 validadas, 0 NOT VALID)</code>
+        e <code>7/8 triggers, procedures, funções, eventos e views criados (1 por rever à mão)</code> — o trigger com cursor.</li>
+      <li>Fase 3 mostra <code>pais 3 → 4 ok (+1 criada(s) para FKs)</code> e <code>zona 3 → 5 ok (+2 ...)</code>.</li>
+      <li>Fase 3 mostra <code>Triggers, procedures, funções, eventos e views: 7/8 presentes (views com os mesmos dados)</code>.</li>
+      <li>Termina com <code>Concluído: os dados no PostgreSQL são iguais aos do MySQL</code> e existe o ficheiro
+        <code>relatorios/migracao_&lt;data&gt;_por_rever.sql</code> com o trigger <code>trg_com_cursor</code>.</li>
+    </ul>
+  </div>
+
+  <div class="teste">
+    <h3>Teste 3 — A verificação apanha diferenças?</h3>
+    <p class="obj">Objectivo: provar que a fase 3 não diz "ok" sem comparar de verdade.</p>
+    <pre><span class="c"># estragar dados no PostgreSQL de propósito</span>
+psql -h 127.0.0.1 -U samuel -d casos_teste -c "UPDATE zona SET descricao='SUL' WHERE num=2"
+psql -h 127.0.0.1 -U samuel -d casos_teste -c "INSERT INTO pais(codigo,nome) VALUES ('ZZ','extra')"
+
+.venv/bin/python migrar.py --modo verificar --origem mysql://root:teste@127.0.0.1:3307/casos \
+  --destino postgresql://samuel@127.0.0.1:5432/casos_teste
+echo $?        <span class="c"># deve mostrar 1</span></pre>
+    <ul class="check">
+      <li><code>zona: 1 diferente(s) ... campos: descricao</code> (a verificação compara o valor exacto: <code>'SUL'</code> ≠ <code>'sul'</code>).</li>
+      <li><code>pais: ... 1 a mais</code> (o <code>ZZ</code>), mas o registo <code>XX</code> criado para a FK <b>não</b> conta.</li>
+      <li>No <code>.json</code> do relatório, <code>amostras</code> mostra a linha e o campo diferentes.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="teste">
+    <h3>Teste 4 — Maiúsculas, acentos e FKs no PostgreSQL</h3>
+    <p class="obj">Objectivo: confirmar que as pesquisas se comportam como no MySQL. Volte a migrar
+    (<code>--substituir</code>) para desfazer o teste 3 e corra no <code>psql</code>:</p>
+    <pre>psql -h 127.0.0.1 -U samuel -d casos_teste
+
+SELECT nome FROM cidade WHERE nome = 'MAPUTO';        <span class="c">-- Maputo</span>
+SELECT nome FROM pais   WHERE nome = 'MOCAMBIQUE';    <span class="c">-- Moçambique</span>
+SELECT nome FROM cidade WHERE nome LIKE 'orf%';       <span class="c">-- Órfã</span>
+SELECT codigo FROM pais WHERE codigo = 'PT';          <span class="c">-- pt</span>
+INSERT INTO pais(codigo,nome) VALUES ('mz','x');      <span class="c">-- ERRO: duplicado (MZ já existe)</span>
+INSERT INTO cidade(pais,nome) VALUES ('QQ','x');      <span class="c">-- ERRO: viola a FK (pai não existe)</span>
+SELECT tabela, chave, motivo FROM migracao.registos_criados;   <span class="c">-- 3 linhas</span>
+\d cidade                                             <span class="c">-- coluna Collation = mysql_ci_ai</span></pre>
+    <ul class="check">
+      <li>As quatro pesquisas encontram o registo.</li>
+      <li>Os dois INSERT dão erro: o UNIQUE ignora maiúsculas e a FK está activa e válida.</li>
+      <li>Para comparar com o modo antigo: migre de novo com <code>--orfaos not-valid --comparacao-texto exata</code>.
+        As FKs ficam <code>NOT VALID</code> e <code>'MAPUTO'</code> deixa de encontrar <code>Maputo</code>.</li>
+    </ul>
+  </div>
+
+  <div class="teste">
+    <h3>Teste 5 — Triggers, procedure e função comportam-se como no MySQL</h3>
+    <p class="obj">Objectivo: executar as mesmas operações nas duas bases e comparar. Migre de novo com
+    <code>--substituir</code> antes de começar.</p>
+    <pre><span class="c"># MySQL</span>
+docker exec -i mysql-teste mysql --force --default-character-set=utf8mb4 -uroot -pteste casos &lt;&lt;'SQL'
+INSERT INTO cidade (pais, nome) VALUES ('MZ', '   ');
+INSERT INTO cidade (pais, nome, ativa) VALUES ('MZ', 'beira', 0);
+SELECT nome, ativa FROM cidade WHERE nome = 'BEIRA';
+SELECT acao, ativo FROM registo;  SELECT valor FROM contador;
+CALL encher_contador(3, @t); SELECT @t;
+SELECT nome_completo('Xai-Xai', NULL);
+SQL
+
+<span class="c"># PostgreSQL</span>
+psql -h 127.0.0.1 -U samuel -d casos_teste &lt;&lt;'SQL'
+INSERT INTO cidade (pais, nome) VALUES ('MZ', '   ');
+INSERT INTO cidade (pais, nome, ativa) VALUES ('MZ', 'beira', false);
+SELECT nome, ativa FROM cidade WHERE nome = 'BEIRA';
+SELECT acao, ativo FROM registo;  SELECT valor FROM contador;
+CALL encher_contador(3, NULL);
+SELECT nome_completo('Xai-Xai', NULL);
+CALL evento_limpar_registos();
+SQL</pre>
+    <ul class="check">
+      <li>O primeiro INSERT falha nas duas com <code>Preencha o nome da cidade.</code> (trigger BEFORE + SIGNAL/RAISE).</li>
+      <li>A cidade fica <code>Beira</code> com <code>ativa</code> verdadeiro (o trigger corrige o nome e o valor).</li>
+      <li><code>registo</code> tem a linha <code>criada</code> e <code>contador</code> vale 1 (trigger AFTER).</li>
+      <li>A procedure devolve <code>4</code> e a função <code>Xai-Xai (?)</code> nas duas bases.</li>
+      <li>Diferença esperada: o id da nova cidade pode ser maior no PostgreSQL, porque um INSERT recusado gasta um número da sequência.</li>
+    </ul>
+  </div>
+
+  <div class="teste">
+    <h3>Teste 6 — Colunas espaciais com PostGIS (opcional)</h3>
+    <p class="obj">Objectivo: confirmar a migração de <code>point</code>/<code>polygon</code>. O PostgreSQL local não
+    tem PostGIS, por isso usa-se um contentor temporário na porta 5434.</p>
+    <pre>docker exec -i mysql-teste mysql --default-character-set=utf8mb4 -uroot -pteste &lt; testes/casos_espaciais.sql
+docker run -d --rm --name pg-postgis -e POSTGRES_PASSWORD=teste -p 5434:5432 postgis/postgis:17-3.5
+createdb -h 127.0.0.1 -p 5434 -U postgres espaciais_teste          <span class="c"># senha: teste</span>
+.venv/bin/python migrar.py --origem mysql://root:teste@127.0.0.1:3307/espaciais \
+  --destino postgresql://postgres:teste@127.0.0.1:5434/espaciais_teste --sim
+psql -h 127.0.0.1 -p 5434 -U postgres -d espaciais_teste \
+  -c "SELECT nome, ST_Y(ponto) lat, ST_X(ponto) lon, ST_SRID(ponto) FROM lugar"</pre>
+    <ul class="check">
+      <li>Maputo com lat <code>-25.9692</code>, lon <code>32.5732</code>, SRID <code>4326</code> — igual a
+        <code>ST_Latitude/ST_Longitude</code> no MySQL.</li>
+      <li><code>\d lugar</code> mostra <code>geometry(Point,4326)</code> e o índice <code>gist</code>.</li>
+      <li>Sem PostGIS (contra o PostgreSQL local) a validação dá <code>ERRO · Colunas espaciais sem PostGIS</code>.</li>
+    </ul>
+  </div>
+
+  <div class="teste">
+    <h3>Teste 7 — Base real numa cópia</h3>
+    <p class="obj">Objectivo: correr o processo completo com os dados verdadeiros, sem tocar na base final.</p>
+    <pre>createdb -h 127.0.0.1 -U samuel g_processes_teste      <span class="c"># se ainda não existir</span>
+
+<span class="c"># 1) só validar e ler os avisos</span>
+.venv/bin/python migrar.py --modo validar \
+  --origem  mysql://migra@127.0.0.1:3306/g_processes \
+  --destino postgresql://samuel@127.0.0.1:5432/g_processes_teste
+
+<span class="c"># 2) migrar e verificar</span>
+.venv/bin/python migrar.py --substituir --sim \
+  --origem  mysql://migra@127.0.0.1:3306/g_processes \
+  --destino postgresql://samuel@127.0.0.1:5432/g_processes_teste</pre>
+    <ul class="check">
+      <li>Validação: 0 erros. O aviso esperado é a tabela <code>requerente_backup_20261017</code> sem chave primária;
+        os 2 triggers de <code>requerente</code> aparecem como <code>Tradução automática (Trigger)</code>.</li>
+      <li>Resultado obtido em 27-10-2026: <b>91 tabelas</b>, todas <code>ok</code>; <b>115 FKs</b> (115 validadas);
+        89 auto-incrementos; 20 triggers de ON UPDATE; 2/2 triggers traduzidos; 218 colunas com <code>mysql_ci_ai</code>;
+        código de saída 0.</li>
+      <li>Testar os triggers numa transação desfeita:
+        <code>BEGIN; INSERT INTO requerente (nome) VALUES (' '); ROLLBACK;</code> → <code>Preencha o campo obrigatório: nome.</code></li>
+      <li>Abrir a base no Adminer (<code>http://localhost:8080</code>) e conferir algumas tabelas.</li>
+    </ul>
+  </div>
+
+  <div class="teste">
+    <h3>Teste 8 — A API a funcionar sobre o PostgreSQL</h3>
+    <p class="obj">Objectivo: confirmar que a aplicação funciona com a base migrada. É aqui que aparecem problemas
+    de SQL específico do MySQL no código.</p>
+    <ol>
+      <li>Numa cópia do <code>.env</code> (sem fazer commit), apontar a ligação da API para
+        <code>postgresql://...@127.0.0.1:5432/g_processes_teste</code> (o driver <code>psycopg</code> tem de estar instalado na API).</li>
+      <li>Correr os testes da API (<code>pytest</code>).</li>
+      <li>Testar à mão: login com o email em maiúsculas, pesquisa de processos por nome e número parcial, criar e
+        tratar um processo, anexar ficheiro, comentários, relatórios.</li>
+      <li>Criar um registo novo e confirmar que o id continua a sequência (auto-incremento acertado).</li>
+      <li>Editar um registo e confirmar que <code>updated_at</code> muda (trigger ON UPDATE).</li>
+      <li>Testar <code>alembic upgrade head</code> numa base PostgreSQL vazia, porque as migrations antigas podem ter SQL de MySQL.</li>
+    </ol>
+  </div>
+
+  <h3>Limpar depois dos testes</h3>
+  <pre>docker stop mysql-teste pg-postgis              <span class="c"># o --rm apaga os contentores</span>
+dropdb -h 127.0.0.1 -U samuel casos_teste
+dropdb -h 127.0.0.1 -U samuel g_processes_teste  <span class="c"># quando já não precisar da cópia</span></pre>
+</section>
+
+<!-- ============================== CHECKLIST ============================== -->
+<section>
+  <h2>9. Checklist para o dia da migração</h2>
+  <ul class="check">
+    <li>Testes 1 a 8 feitos com sucesso numa cópia recente dos dados.</li>
+    <li>Órfãos e datas zero corrigidos no MySQL (a validação lista-os), para não ser preciso criar registos-pai.</li>
+    <li>Ficheiro <code>*_por_rever.sql</code> vazio ou já corrigido (na base real não é gerado).</li>
+    <li>Decidido o que fazer com <code>requerente_backup_20261017</code> (tabela sem chave primária).</li>
+    <li>Escritas paradas na API (modo manutenção), para nada entrar no MySQL durante a migração.</li>
+    <li>Backup do MySQL: <code>mysqldump --single-transaction --routines --triggers g_processes &gt; backup.sql</code>.</li>
+    <li>Base PostgreSQL de destino vazia criada.</li>
+    <li>Migração com <code>--modo tudo</code>; código de saída <code>0</code>; relatório guardado.</li>
+    <li><code>SELECT * FROM migracao.registos_criados</code> revisto; eventos agendados (pg_cron ou crontab).</li>
+    <li><code>.env</code> da API apontado para o PostgreSQL; API reiniciada; testes rápidos (login, pesquisa, criar processo).</li>
+    <li>MySQL mantido só para leitura durante alguns dias, como plano de recuo.</li>
+  </ul>
+
+  <h2 style="break-before: page">10. Problemas comuns</h2>
+  <table>
+    <tr><th style="width:38%">Mensagem / sintoma</th><th>Causa e solução</th></tr>
+    <tr><td><code>Não consegui ligar ao MySQL/PostgreSQL</code> (saída 3)</td>
+      <td>Host, porta, utilizador ou senha errados, ou o serviço parado. Teste com <code>mysql</code>/<code>psql</code>.</td></tr>
+    <tr><td><code>Tabelas já existem no destino</code> (ERRO)</td>
+      <td>A base de destino não está vazia. Use outra base ou <code>--substituir</code> (apaga e recria essas tabelas).</td></tr>
+    <tr><td><code>Sem permissão no destino</code></td>
+      <td>O utilizador do PostgreSQL não pode criar objectos: <code>GRANT CREATE ON DATABASE ... TO ...</code> ou use o dono da base.</td></tr>
+    <tr><td><code>FK para colunas sem unicidade</code> (ERRO)</td>
+      <td>A FK aponta para colunas com valores repetidos; o PostgreSQL não permite. Corrija os duplicados no MySQL.</td></tr>
+    <tr><td><code>nondeterministic collations are not supported for ILIKE</code></td>
+      <td>A aplicação usa ILIKE numa coluna com <code>mysql_ci_ai</code>. Troque por LIKE (já ignora maiúsculas).</td></tr>
+    <tr><td><code>LIKE não funciona antes do PostgreSQL 18</code> (AVISO)</td>
+      <td>Actualize o PostgreSQL para o 18 ou use <code>--comparacao-texto exata</code>.</td></tr>
+    <tr><td><code>Pai em falta não criado</code> (AVISO)</td>
+      <td>Não foi possível inserir o registo-pai (ex.: CHECK ou campo sem valor possível). A FK fica NOT VALID; corrija à mão.</td></tr>
+    <tr><td><code>Por rever à mão (Trigger/Procedure...)</code> (AVISO)</td>
+      <td>O código usa cursores, handlers, <code>@variáveis</code> ou SQL dinâmico. Corrija a tradução em
+      <code>*_por_rever.sql</code> e execute-a com <code>psql -f</code>.</td></tr>
+    <tr><td><code>Colunas espaciais sem PostGIS</code> (ERRO)</td>
+      <td>Instale o PostGIS no servidor: <code>sudo apt install postgresql-18-postgis-3</code>.</td></tr>
+    <tr><td><code>View devolve dados diferentes</code> (ERRO)</td>
+      <td>A tradução da view não dá o mesmo resultado (ex.: função com comportamento diferente). Veja a view no
+      <code>.sql</code> do relatório e ajuste-a.</td></tr>
+    <tr><td>Verificação lenta em tabelas muito grandes</td>
+      <td>Nos ensaios use <code>--sem-comparar-linhas</code>; deixe a comparação completa para a migração final.</td></tr>
+    <tr><td>Acentos estragados (<code>MoÃ§ambique</code>)</td>
+      <td>Dados carregados no MySQL com o charset errado. Carregue sempre com <code>--default-character-set=utf8mb4</code>.</td></tr>
+  </table>
+
+</section>
+</body>
+</html>

@@ -1,0 +1,2115 @@
+{
+  "inicio": "2026-10-27T19:06:24",
+  "fim": "2026-10-27T19:06:45",
+  "resumo": {
+    "Origem": "mysql://migra@127.0.0.1:3306/g_processes",
+    "Destino": "postgresql://samuel@127.0.0.1:5432/g_processes2 (esquema public)",
+    "Validação": "0 erro(s), 1 aviso(s)",
+    "Migração": "0 erro(s)",
+    "FKs": "115/115 presentes (0 NOT VALID)",
+    "Objetos de código": "2/2 presentes e iguais",
+    "Tabelas verificadas": 91,
+    "Tabelas com diferenças": 0,
+    "Linhas MySQL": 5359,
+    "Linhas PostgreSQL": 5359
+  },
+  "achados": [
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "tinyint(1) mantido como número",
+      "objeto": "grupo.inferior_id",
+      "mensagem": "o nome termina em _id ou a coluna faz parte de uma FK; fica smallint, não boolean."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Índices renomeados",
+      "objeto": "165 índices",
+      "mensagem": "no PostgreSQL os nomes de índice são únicos por esquema; ficam <tabela>_<índice>."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Texto sem distinguir maiúsculas (como no MySQL)",
+      "objeto": "218 colunas",
+      "mensagem": "usam uma collation que ignora maiúsculas e acentos: WHERE nome = 'jose' encontra 'José', e UNIQUE/FK também. ILIKE e expressões regulares (~) dão erro nestas colunas: use LIKE, que já ignora maiúsculas."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "anotacoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "encaminhamento",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "estados",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "finalidade",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "funcao",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "local_entrada",
+      "mensagem": "created_at, updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "numeracao",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "permissoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "permissoes_user",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "requerente",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Tabela sem chave primária",
+      "objeto": "requerente_backup_20261017",
+      "mensagem": "a comparação linha a linha é feita por conjunto de linhas (mais lenta, sem indicar o campo)."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "requerente_backup_20261017",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_anotacoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_documento",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_entidade",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_usuario",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "urgencia",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "users",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "visibilidade_processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Tradução automática (Trigger)",
+      "objeto": "requerente.trg_requerente_obrigatorio_insert",
+      "mensagem": "tradução automática."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Tradução automática (Trigger)",
+      "objeto": "requerente.trg_requerente_obrigatorio_update",
+      "mensagem": "tradução automática."
+    }
+  ],
+  "migracao": {
+    "alembic_version": {
+      "linhas": 1,
+      "estado": "ok",
+      "segundos": 0.05
+    },
+    "anexos": {
+      "linhas": 371,
+      "estado": "ok",
+      "segundos": 0.07
+    },
+    "anotacoes": {
+      "linhas": 104,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "armario": {
+      "linhas": 12,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "armario_prateleira": {
+      "linhas": 20,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "autor": {
+      "linhas": 7,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "avaliacao_comite": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "avaliacao_tecnica": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "banco": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "catalogacao": {
+      "linhas": 3,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "categoriakit": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "config": {
+      "linhas": 1,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "contrato": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "credito": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "desembolso": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "detalhes_processo": {
+      "linhas": 106,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "detalhes_requerente": {
+      "linhas": 8,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "distrito": {
+      "linhas": 161,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "email_logs": {
+      "linhas": 57,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "emprestimo": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "encaminhamento": {
+      "linhas": 81,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "entidade": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "equipamento": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "equipamento_solicitacao": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "error_logs": {
+      "linhas": 99,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "estado_civil": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "estados": {
+      "linhas": 8,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "estados_externo": {
+      "linhas": 4,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "extencionista": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "fases_avaliacoes": {
+      "linhas": 5,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "finalidade": {
+      "linhas": 6,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "financiamento": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "forma_pagamento": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "formato": {
+      "linhas": 4,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "fornecedor": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "funcao": {
+      "linhas": 13,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "genero": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "grupo": {
+      "linhas": 27,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "grupo_funcao": {
+      "linhas": 5,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "grupo_user": {
+      "linhas": 66,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "historico": {
+      "linhas": 453,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "insumo": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "insumokit": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "justificacao_faltas": {
+      "linhas": 6,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "lingua": {
+      "linhas": 7,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "linha_financiamento": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "local_entrada": {
+      "linhas": 15,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "localidade": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "login_otp": {
+      "linhas": 25,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "logs": {
+      "linhas": 2222,
+      "estado": "ok",
+      "segundos": 0.06
+    },
+    "nivel_representacao": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "notification": {
+      "linhas": 159,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "numeracao": {
+      "linhas": 6,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "pacote_solicitacao": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "pagamento_estado": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "pagamentos": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "pedido_dispensa": {
+      "linhas": 7,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "pedido_ferias": {
+      "linhas": 12,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "periodicidade": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "permissoes": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "permissoes_user": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "posicao": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "posto_adminstrativo": {
+      "linhas": 420,
+      "estado": "ok",
+      "segundos": 0.05
+    },
+    "prateleira": {
+      "linhas": 6,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "prestacoes": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "privilegio_perfil": {
+      "linhas": 3,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "processo": {
+      "linhas": 220,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "provincia": {
+      "linhas": 11,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "requerente": {
+      "linhas": 51,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "requerente_backup_20261017": {
+      "linhas": 41,
+      "estado": "ok",
+      "segundos": 0.05
+    },
+    "reset_password": {
+      "linhas": 9,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "responsavel": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.05
+    },
+    "solicitacao": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.05
+    },
+    "taxa_desconto": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_actividade": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_anexo": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_anotacoes": {
+      "linhas": 3,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_deseembolso": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_documento": {
+      "linhas": 5,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_entidade": {
+      "linhas": 5,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_equipamento": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_financiamento": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_garantia": {
+      "linhas": 0,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_grupo": {
+      "linhas": 5,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_processo": {
+      "linhas": 15,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "tipo_usuario": {
+      "linhas": 6,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "token_blocklist": {
+      "linhas": 388,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "urgencia": {
+      "linhas": 7,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "user_requerente": {
+      "linhas": 23,
+      "estado": "ok",
+      "segundos": 0.03
+    },
+    "users": {
+      "linhas": 55,
+      "estado": "ok",
+      "segundos": 0.04
+    },
+    "visibilidade_processo": {
+      "linhas": 5,
+      "estado": "ok",
+      "segundos": 0.04
+    }
+  },
+  "verificacao": {
+    "alembic_version": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 1,
+      "linhas_pg": 1,
+      "iguais": 1,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 16,
+      "volume_pg": 16
+    },
+    "anexos": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 371,
+      "linhas_pg": 371,
+      "iguais": 371,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 59263,
+      "volume_pg": 59263
+    },
+    "anotacoes": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 104,
+      "linhas_pg": 104,
+      "iguais": 104,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 7847,
+      "volume_pg": 7847
+    },
+    "armario": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 12,
+      "linhas_pg": 12,
+      "iguais": 12,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 624,
+      "volume_pg": 624
+    },
+    "armario_prateleira": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 20,
+      "linhas_pg": 20,
+      "iguais": 20,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 887,
+      "volume_pg": 887
+    },
+    "autor": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 7,
+      "linhas_pg": 7,
+      "iguais": 7,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 365,
+      "volume_pg": 365
+    },
+    "avaliacao_comite": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "avaliacao_tecnica": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "banco": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "catalogacao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 3,
+      "linhas_pg": 3,
+      "iguais": 3,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 427,
+      "volume_pg": 427
+    },
+    "categoriakit": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "config": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 1,
+      "linhas_pg": 1,
+      "iguais": 1,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 575,
+      "volume_pg": 575
+    },
+    "contrato": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "credito": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "desembolso": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "detalhes_processo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 106,
+      "linhas_pg": 106,
+      "iguais": 106,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 44135,
+      "volume_pg": 44135
+    },
+    "detalhes_requerente": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 8,
+      "linhas_pg": 8,
+      "iguais": 8,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 328,
+      "volume_pg": 328
+    },
+    "distrito": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 161,
+      "linhas_pg": 161,
+      "iguais": 161,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 1746,
+      "volume_pg": 1746
+    },
+    "email_logs": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 57,
+      "linhas_pg": 57,
+      "iguais": 57,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 6407,
+      "volume_pg": 6407
+    },
+    "emprestimo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "encaminhamento": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 81,
+      "linhas_pg": 81,
+      "iguais": 81,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 3840,
+      "volume_pg": 3840
+    },
+    "entidade": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "equipamento": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "equipamento_solicitacao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "error_logs": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 99,
+      "linhas_pg": 99,
+      "iguais": 99,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 118837,
+      "volume_pg": 118837
+    },
+    "estado_civil": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "estados": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 8,
+      "linhas_pg": 8,
+      "iguais": 8,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 397,
+      "volume_pg": 397
+    },
+    "estados_externo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 4,
+      "linhas_pg": 4,
+      "iguais": 4,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 44,
+      "volume_pg": 44
+    },
+    "extencionista": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "fases_avaliacoes": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 5,
+      "linhas_pg": 5,
+      "iguais": 5,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 269,
+      "volume_pg": 269
+    },
+    "finalidade": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 6,
+      "linhas_pg": 6,
+      "iguais": 6,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 331,
+      "volume_pg": 331
+    },
+    "financiamento": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "forma_pagamento": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "formato": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 4,
+      "linhas_pg": 4,
+      "iguais": 4,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 207,
+      "volume_pg": 207
+    },
+    "fornecedor": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "funcao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 13,
+      "linhas_pg": 13,
+      "iguais": 13,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 815,
+      "volume_pg": 815
+    },
+    "genero": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "grupo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 27,
+      "linhas_pg": 27,
+      "iguais": 27,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 1795,
+      "volume_pg": 1795
+    },
+    "grupo_funcao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 5,
+      "linhas_pg": 5,
+      "iguais": 5,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 217,
+      "volume_pg": 217
+    },
+    "grupo_user": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 66,
+      "linhas_pg": 66,
+      "iguais": 66,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 3003,
+      "volume_pg": 3003
+    },
+    "historico": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 453,
+      "linhas_pg": 453,
+      "iguais": 453,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 28352,
+      "volume_pg": 28352
+    },
+    "insumo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "insumokit": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "justificacao_faltas": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 6,
+      "linhas_pg": 6,
+      "iguais": 6,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 368,
+      "volume_pg": 368
+    },
+    "lingua": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 7,
+      "linhas_pg": 7,
+      "iguais": 7,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 357,
+      "volume_pg": 357
+    },
+    "linha_financiamento": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "local_entrada": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 15,
+      "linhas_pg": 15,
+      "iguais": 15,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 774,
+      "volume_pg": 774
+    },
+    "localidade": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "login_otp": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 25,
+      "linhas_pg": 25,
+      "iguais": 25,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 5584,
+      "volume_pg": 5584
+    },
+    "logs": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 2222,
+      "linhas_pg": 2222,
+      "iguais": 2222,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 261365,
+      "volume_pg": 261365
+    },
+    "nivel_representacao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "notification": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 159,
+      "linhas_pg": 159,
+      "iguais": 159,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 22063,
+      "volume_pg": 22063
+    },
+    "numeracao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 6,
+      "linhas_pg": 6,
+      "iguais": 6,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 427,
+      "volume_pg": 427
+    },
+    "pacote_solicitacao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "pagamento_estado": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "pagamentos": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "pedido_dispensa": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 7,
+      "linhas_pg": 7,
+      "iguais": 7,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 502,
+      "volume_pg": 502
+    },
+    "pedido_ferias": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 12,
+      "linhas_pg": 12,
+      "iguais": 12,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 660,
+      "volume_pg": 660
+    },
+    "periodicidade": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "permissoes": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "permissoes_user": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "posicao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "posto_adminstrativo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 420,
+      "linhas_pg": 420,
+      "iguais": 420,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 22362,
+      "volume_pg": 22362
+    },
+    "prateleira": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 6,
+      "linhas_pg": 6,
+      "iguais": 6,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 282,
+      "volume_pg": 282
+    },
+    "prestacoes": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "privilegio_perfil": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 3,
+      "linhas_pg": 3,
+      "iguais": 3,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 163,
+      "volume_pg": 163
+    },
+    "processo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 220,
+      "linhas_pg": 220,
+      "iguais": 220,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 26809,
+      "volume_pg": 26809
+    },
+    "provincia": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 11,
+      "linhas_pg": 11,
+      "iguais": 11,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 104,
+      "volume_pg": 104
+    },
+    "requerente": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 51,
+      "linhas_pg": 51,
+      "iguais": 51,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 11983,
+      "volume_pg": 11983
+    },
+    "requerente_backup_20261017": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 41,
+      "linhas_pg": 41,
+      "iguais": 41,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 9324,
+      "volume_pg": 9324
+    },
+    "reset_password": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 9,
+      "linhas_pg": 9,
+      "iguais": 9,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 1149,
+      "volume_pg": 1149
+    },
+    "responsavel": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "solicitacao": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "taxa_desconto": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "tipo_actividade": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "tipo_anexo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "tipo_anotacoes": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 3,
+      "linhas_pg": 3,
+      "iguais": 3,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 148,
+      "volume_pg": 148
+    },
+    "tipo_deseembolso": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "tipo_documento": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 5,
+      "linhas_pg": 5,
+      "iguais": 5,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 273,
+      "volume_pg": 273
+    },
+    "tipo_entidade": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 5,
+      "linhas_pg": 5,
+      "iguais": 5,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 255,
+      "volume_pg": 255
+    },
+    "tipo_equipamento": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "tipo_financiamento": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "tipo_garantia": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 0,
+      "linhas_pg": 0,
+      "iguais": 0,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 0,
+      "volume_pg": 0
+    },
+    "tipo_grupo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 5,
+      "linhas_pg": 5,
+      "iguais": 5,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 273,
+      "volume_pg": 273
+    },
+    "tipo_processo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 15,
+      "linhas_pg": 15,
+      "iguais": 15,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 951,
+      "volume_pg": 951
+    },
+    "tipo_usuario": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 6,
+      "linhas_pg": 6,
+      "iguais": 6,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 291,
+      "volume_pg": 291
+    },
+    "token_blocklist": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 388,
+      "linhas_pg": 388,
+      "iguais": 388,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 29768,
+      "volume_pg": 29768
+    },
+    "urgencia": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 7,
+      "linhas_pg": 7,
+      "iguais": 7,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 356,
+      "volume_pg": 356
+    },
+    "user_requerente": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 23,
+      "linhas_pg": 23,
+      "iguais": 23,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 4022,
+      "volume_pg": 4022
+    },
+    "users": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 55,
+      "linhas_pg": 55,
+      "iguais": 55,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 9945,
+      "volume_pg": 9945
+    },
+    "visibilidade_processo": {
+      "ok": true,
+      "colunas_ok": true,
+      "linhas_mysql": 5,
+      "linhas_pg": 5,
+      "iguais": 5,
+      "diferentes": 0,
+      "em_falta": 0,
+      "a_mais": 0,
+      "criados": 0,
+      "campos_diferentes": {},
+      "campos_tamanho_diferente": {},
+      "amostras": [],
+      "volume_mysql": 251,
+      "volume_pg": 251
+    }
+  }
+}

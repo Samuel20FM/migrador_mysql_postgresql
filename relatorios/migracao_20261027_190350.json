@@ -1,0 +1,195 @@
+{
+  "inicio": "2026-10-27T19:03:50",
+  "fim": "2026-10-27T19:03:50",
+  "resumo": {
+    "Origem": "mysql://migra@127.0.0.1:3306/g_processes",
+    "Destino": "postgresql://samuel@127.0.0.1:5432/g_processes2 (esquema public)",
+    "Validação": "0 erro(s), 1 aviso(s)"
+  },
+  "achados": [
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "tinyint(1) mantido como número",
+      "objeto": "grupo.inferior_id",
+      "mensagem": "o nome termina em _id ou a coluna faz parte de uma FK; fica smallint, não boolean."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Índices renomeados",
+      "objeto": "165 índices",
+      "mensagem": "no PostgreSQL os nomes de índice são únicos por esquema; ficam <tabela>_<índice>."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Texto sem distinguir maiúsculas (como no MySQL)",
+      "objeto": "218 colunas",
+      "mensagem": "usam uma collation que ignora maiúsculas e acentos: WHERE nome = 'jose' encontra 'José', e UNIQUE/FK também. ILIKE e expressões regulares (~) dão erro nestas colunas: use LIKE, que já ignora maiúsculas."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "anotacoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "encaminhamento",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "estados",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "finalidade",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "funcao",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "local_entrada",
+      "mensagem": "created_at, updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "numeracao",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "permissoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "permissoes_user",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "requerente",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "AVISO",
+      "categoria": "Tabela sem chave primária",
+      "objeto": "requerente_backup_20261017",
+      "mensagem": "a comparação linha a linha é feita por conjunto de linhas (mais lenta, sem indicar o campo)."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "requerente_backup_20261017",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_anotacoes",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_documento",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_entidade",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "tipo_usuario",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "urgencia",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "users",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "ON UPDATE CURRENT_TIMESTAMP",
+      "objeto": "visibilidade_processo",
+      "mensagem": "updated_at: recriado com um trigger."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Tradução automática (Trigger)",
+      "objeto": "requerente.trg_requerente_obrigatorio_insert",
+      "mensagem": "tradução automática."
+    },
+    {
+      "fase": "validacao",
+      "nivel": "INFO",
+      "categoria": "Tradução automática (Trigger)",
+      "objeto": "requerente.trg_requerente_obrigatorio_update",
+      "mensagem": "tradução automática."
+    }
+  ],
+  "migracao": {},
+  "verificacao": {}
+}

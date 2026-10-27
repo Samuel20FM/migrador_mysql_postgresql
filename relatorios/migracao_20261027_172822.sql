@@ -1,0 +1,2783 @@
+CREATE SCHEMA IF NOT EXISTS "public";
+
+CREATE COLLATION IF NOT EXISTS "public"."mysql_ci_ai" (provider = icu, locale = 'und-u-ks-level1', deterministic = false);
+
+
+CREATE SCHEMA IF NOT EXISTS migracao;
+CREATE TABLE IF NOT EXISTS migracao.registos_criados (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  esquema text NOT NULL,
+  tabela text NOT NULL,
+  colunas text[] NOT NULL,
+  chave jsonb NOT NULL,
+  motivo text NOT NULL,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+
+DROP TABLE IF EXISTS "public"."alembic_version" CASCADE;
+
+DROP TABLE IF EXISTS "public"."anexos" CASCADE;
+
+DROP TABLE IF EXISTS "public"."anotacoes" CASCADE;
+
+DROP TABLE IF EXISTS "public"."armario" CASCADE;
+
+DROP TABLE IF EXISTS "public"."armario_prateleira" CASCADE;
+
+DROP TABLE IF EXISTS "public"."autor" CASCADE;
+
+DROP TABLE IF EXISTS "public"."avaliacao_comite" CASCADE;
+
+DROP TABLE IF EXISTS "public"."avaliacao_tecnica" CASCADE;
+
+DROP TABLE IF EXISTS "public"."banco" CASCADE;
+
+DROP TABLE IF EXISTS "public"."catalogacao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."categoriakit" CASCADE;
+
+DROP TABLE IF EXISTS "public"."config" CASCADE;
+
+DROP TABLE IF EXISTS "public"."contrato" CASCADE;
+
+DROP TABLE IF EXISTS "public"."credito" CASCADE;
+
+DROP TABLE IF EXISTS "public"."desembolso" CASCADE;
+
+DROP TABLE IF EXISTS "public"."detalhes_processo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."detalhes_requerente" CASCADE;
+
+DROP TABLE IF EXISTS "public"."distrito" CASCADE;
+
+DROP TABLE IF EXISTS "public"."email_logs" CASCADE;
+
+DROP TABLE IF EXISTS "public"."emprestimo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."encaminhamento" CASCADE;
+
+DROP TABLE IF EXISTS "public"."entidade" CASCADE;
+
+DROP TABLE IF EXISTS "public"."equipamento" CASCADE;
+
+DROP TABLE IF EXISTS "public"."equipamento_solicitacao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."error_logs" CASCADE;
+
+DROP TABLE IF EXISTS "public"."estado_civil" CASCADE;
+
+DROP TABLE IF EXISTS "public"."estados" CASCADE;
+
+DROP TABLE IF EXISTS "public"."estados_externo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."extencionista" CASCADE;
+
+DROP TABLE IF EXISTS "public"."fases_avaliacoes" CASCADE;
+
+DROP TABLE IF EXISTS "public"."finalidade" CASCADE;
+
+DROP TABLE IF EXISTS "public"."financiamento" CASCADE;
+
+DROP TABLE IF EXISTS "public"."forma_pagamento" CASCADE;
+
+DROP TABLE IF EXISTS "public"."formato" CASCADE;
+
+DROP TABLE IF EXISTS "public"."fornecedor" CASCADE;
+
+DROP TABLE IF EXISTS "public"."funcao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."genero" CASCADE;
+
+DROP TABLE IF EXISTS "public"."grupo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."grupo_funcao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."grupo_user" CASCADE;
+
+DROP TABLE IF EXISTS "public"."historico" CASCADE;
+
+DROP TABLE IF EXISTS "public"."insumo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."insumokit" CASCADE;
+
+DROP TABLE IF EXISTS "public"."justificacao_faltas" CASCADE;
+
+DROP TABLE IF EXISTS "public"."lingua" CASCADE;
+
+DROP TABLE IF EXISTS "public"."linha_financiamento" CASCADE;
+
+DROP TABLE IF EXISTS "public"."local_entrada" CASCADE;
+
+DROP TABLE IF EXISTS "public"."localidade" CASCADE;
+
+DROP TABLE IF EXISTS "public"."login_otp" CASCADE;
+
+DROP TABLE IF EXISTS "public"."logs" CASCADE;
+
+DROP TABLE IF EXISTS "public"."nivel_representacao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."notification" CASCADE;
+
+DROP TABLE IF EXISTS "public"."numeracao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."pacote_solicitacao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."pagamento_estado" CASCADE;
+
+DROP TABLE IF EXISTS "public"."pagamentos" CASCADE;
+
+DROP TABLE IF EXISTS "public"."pedido_dispensa" CASCADE;
+
+DROP TABLE IF EXISTS "public"."pedido_ferias" CASCADE;
+
+DROP TABLE IF EXISTS "public"."periodicidade" CASCADE;
+
+DROP TABLE IF EXISTS "public"."permissoes" CASCADE;
+
+DROP TABLE IF EXISTS "public"."permissoes_user" CASCADE;
+
+DROP TABLE IF EXISTS "public"."posicao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."posto_adminstrativo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."prateleira" CASCADE;
+
+DROP TABLE IF EXISTS "public"."prestacoes" CASCADE;
+
+DROP TABLE IF EXISTS "public"."privilegio_perfil" CASCADE;
+
+DROP TABLE IF EXISTS "public"."processo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."provincia" CASCADE;
+
+DROP TABLE IF EXISTS "public"."requerente" CASCADE;
+
+DROP TABLE IF EXISTS "public"."requerente_backup_20261017" CASCADE;
+
+DROP TABLE IF EXISTS "public"."reset_password" CASCADE;
+
+DROP TABLE IF EXISTS "public"."responsavel" CASCADE;
+
+DROP TABLE IF EXISTS "public"."solicitacao" CASCADE;
+
+DROP TABLE IF EXISTS "public"."taxa_desconto" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_actividade" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_anexo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_anotacoes" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_deseembolso" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_documento" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_entidade" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_equipamento" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_financiamento" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_garantia" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_grupo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_processo" CASCADE;
+
+DROP TABLE IF EXISTS "public"."tipo_usuario" CASCADE;
+
+DROP TABLE IF EXISTS "public"."token_blocklist" CASCADE;
+
+DROP TABLE IF EXISTS "public"."urgencia" CASCADE;
+
+DROP TABLE IF EXISTS "public"."user_requerente" CASCADE;
+
+DROP TABLE IF EXISTS "public"."users" CASCADE;
+
+DROP TABLE IF EXISTS "public"."visibilidade_processo" CASCADE;
+
+DELETE FROM migracao.registos_criados WHERE esquema = 'public' AND tabela = ANY('{alembic_version,anexos,anotacoes,armario,armario_prateleira,autor,avaliacao_comite,avaliacao_tecnica,banco,catalogacao,categoriakit,config,contrato,credito,desembolso,detalhes_processo,detalhes_requerente,distrito,email_logs,emprestimo,encaminhamento,entidade,equipamento,equipamento_solicitacao,error_logs,estado_civil,estados,estados_externo,extencionista,fases_avaliacoes,finalidade,financiamento,forma_pagamento,formato,fornecedor,funcao,genero,grupo,grupo_funcao,grupo_user,historico,insumo,insumokit,justificacao_faltas,lingua,linha_financiamento,local_entrada,localidade,login_otp,logs,nivel_representacao,notification,numeracao,pacote_solicitacao,pagamento_estado,pagamentos,pedido_dispensa,pedido_ferias,periodicidade,permissoes,permissoes_user,posicao,posto_adminstrativo,prateleira,prestacoes,privilegio_perfil,processo,provincia,requerente,requerente_backup_20261017,reset_password,responsavel,solicitacao,taxa_desconto,tipo_actividade,tipo_anexo,tipo_anotacoes,tipo_deseembolso,tipo_documento,tipo_entidade,tipo_equipamento,tipo_financiamento,tipo_garantia,tipo_grupo,tipo_processo,tipo_usuario,token_blocklist,urgencia,user_requerente,users,visibilidade_processo}');
+
+CREATE TABLE "public"."alembic_version" (
+  "version_num" varchar(32) COLLATE "public"."mysql_ci_ai" NOT NULL
+);
+
+CREATE TABLE "public"."anexos" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "publico" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("publico" IN ('0', '1')),
+  "table" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "row_id" integer NOT NULL,
+  "tipo_documento_id" integer,
+  "descricao" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "caminho" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "nome_original" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "novo_nome" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "extensao" varchar(10) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "proveniencia" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '1' CHECK ("proveniencia" IN ('1', '2')),
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado" integer NOT NULL,
+  "user_id" integer,
+  "requerente_id" integer
+);
+
+COMMENT ON COLUMN "public"."anexos"."proveniencia" IS '1 => interno, 2 => externo';
+
+CREATE TABLE "public"."anotacoes" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "publico" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("publico" IN ('0', '1')),
+  "processo_id" integer NOT NULL,
+  "tipo_anotacoes_id" integer NOT NULL,
+  "mensagem" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "user_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "proveniencia" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("proveniencia" IN ('0', '1')),
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."armario" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."armario_prateleira" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "armario_id" integer NOT NULL,
+  "prateleira_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."autor" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "nome" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."avaliacao_comite" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "solicitacao_id" integer NOT NULL,
+  "valor_solicitado" real NOT NULL,
+  "valor_final" real,
+  "tempo_retorno" integer,
+  "prestacao" real,
+  "periodicidade_id" integer,
+  "periodo_diferimento" integer,
+  "taxa_juros" real,
+  "comentarios" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "motivo_rejeicao" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "data_rejeicao" timestamp,
+  "periodo_carencia" integer,
+  "parecer_final" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "estado" integer NOT NULL,
+  "estado_fase_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado_envio" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("estado_envio" IN ('0', '1'))
+);
+
+CREATE TABLE "public"."avaliacao_tecnica" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "solicitacao_id" integer NOT NULL,
+  "valor_solicitado" real NOT NULL,
+  "valor_sugerido" real,
+  "tempo_retorno_sugerido" integer,
+  "prestacao_sugerida" real,
+  "periodicidade_sugerida_id" integer,
+  "periodo_carencia" integer,
+  "taxa_juros" real,
+  "parecer_geral" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "motivo" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "tipo_garantia" varchar(200) COLLATE "public"."mysql_ci_ai",
+  "estado" integer NOT NULL,
+  "estado_fase_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado_envio" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("estado_envio" IN ('0', '1'))
+);
+
+CREATE TABLE "public"."banco" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."catalogacao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "capa" text COLLATE "public"."mysql_ci_ai",
+  "titulo" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "subtitulo" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "nr_documento" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "tipo_documento_id" integer NOT NULL,
+  "parte" varchar(25) COLLATE "public"."mysql_ci_ai",
+  "volume" integer,
+  "edicao" varchar(25) COLLATE "public"."mysql_ci_ai",
+  "data_edicao" date,
+  "revisao" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "data_revisao" date,
+  "emenda_incorp" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "corrigenda" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "autor_id" integer NOT NULL,
+  "data_publicacao" date,
+  "lingua_id" integer NOT NULL,
+  "formato_id" integer NOT NULL,
+  "estado_emenda_id" integer NOT NULL,
+  "armario_id" integer NOT NULL,
+  "prateleira_id" integer NOT NULL,
+  "quantidade" integer,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."categoriakit" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "designacao" varchar(75) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."config" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "nome" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "descricao" text COLLATE "public"."mysql_ci_ai",
+  "endereco" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "nuit" integer,
+  "contacto" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "contacto_alt" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "email" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "email_alt" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "website" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "logo" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "logo_prod" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "cor" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "cor_geral" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "cor_primaria" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "cor_secundaria" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "cor_tercearia" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "cor_quaternaria" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "cor_texto" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "texto1" text COLLATE "public"."mysql_ci_ai",
+  "texto2" text COLLATE "public"."mysql_ci_ai",
+  "direitos" text COLLATE "public"."mysql_ci_ai",
+  "desenvolvido_por" text COLLATE "public"."mysql_ci_ai",
+  "manual_utilizador" text COLLATE "public"."mysql_ci_ai",
+  "logo_dev" text COLLATE "public"."mysql_ci_ai",
+  "nome_dev" text COLLATE "public"."mysql_ci_ai",
+  "is_main" varchar(1) COLLATE "public"."mysql_ci_ai" CHECK ("is_main" IN ('1', '0')),
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "logo_prod_2" varchar(255) COLLATE "public"."mysql_ci_ai"
+);
+
+CREATE TABLE "public"."contrato" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "valor_solicitado" real NOT NULL,
+  "solicitacao_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."credito" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "codigo_solitacacao_id" integer NOT NULL,
+  "data_financiamento" date NOT NULL,
+  "periodo_maturidade" date NOT NULL,
+  "capital" real NOT NULL,
+  "taxa" real NOT NULL,
+  "juro" real NOT NULL,
+  "valor_pago" real NOT NULL,
+  "valor_total" real NOT NULL,
+  "saldo" real NOT NULL,
+  "estado" integer NOT NULL,
+  "aprovacao_comite_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."desembolso" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "tempo_retorno" integer NOT NULL,
+  "periodo_diferimento" integer NOT NULL,
+  "taxa_juros" real NOT NULL,
+  "prestacao_final" real NOT NULL,
+  "valor_deseembolsar" real NOT NULL,
+  "numero_conta_destino" varchar(16) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "data_deseembolso" date NOT NULL,
+  "codigo_solitacacao_id" integer NOT NULL,
+  "tipo_deseembolso_id" integer NOT NULL,
+  "periodicidade_id" integer NOT NULL,
+  "banco_destino_id" integer,
+  "estado_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado_envio" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("estado_envio" IN ('0', '1'))
+);
+
+CREATE TABLE "public"."detalhes_processo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "dados" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "dados_aprovacao" text COLLATE "public"."mysql_ci_ai",
+  "tipo_processo_id" integer NOT NULL,
+  "tipo_dados" varchar(17) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("tipo_dados" IN ('dados_requerente', 'dados_solicitacao')),
+  "processo_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."detalhes_requerente" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "dados" text COLLATE "public"."mysql_ci_ai",
+  "requerente_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."distrito" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "nome" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "provincia_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."email_logs" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "email" varchar(150) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "mensagem" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "descricao" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" varchar(7) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("estado" IN ('success', 'error')),
+  "user_id" integer NOT NULL,
+  "sent_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."emprestimo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "catalogacao_id" integer NOT NULL,
+  "funcionario_id" integer NOT NULL,
+  "data_emprestimo" date NOT NULL,
+  "data_prevista_devolucao" date,
+  "data_devolucao" date,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."encaminhamento" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "processo_id" integer NOT NULL,
+  "destinatario_id" integer,
+  "grupo_id" integer,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."entidade" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "designacao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."equipamento" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "codigo" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "descricao" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "valor" real NOT NULL,
+  "tipo_equipamento_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."equipamento_solicitacao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "equipamento_id" integer NOT NULL,
+  "valor" real NOT NULL,
+  "solicitacao_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "data_entrega" date,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."error_logs" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "tabela" varchar(100) COLLATE "public"."mysql_ci_ai",
+  "id_row" integer,
+  "accao" varchar(15) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("accao" IN ('insert', 'read', 'update', 'delete', 'login', 'logout', 'password_change', 'other')),
+  "error_type" varchar(150) COLLATE "public"."mysql_ci_ai",
+  "error_message" text COLLATE "public"."mysql_ci_ai",
+  "stack_trace" text COLLATE "public"."mysql_ci_ai",
+  "endpoint" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "metodo_http" varchar(10) COLLATE "public"."mysql_ci_ai",
+  "ip_address" varchar(45) COLLATE "public"."mysql_ci_ai",
+  "user_agent" text COLLATE "public"."mysql_ci_ai",
+  "user_id" integer,
+  "requerente_id" integer,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."estado_civil" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."estados" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(20) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "user_id" integer NOT NULL,
+  "estado" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '1' CHECK ("estado" IN ('1', '0')),
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."estados_externo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "designacao" varchar(20) COLLATE "public"."mysql_ci_ai" NOT NULL
+);
+
+CREATE TABLE "public"."extencionista" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "codigo" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "nome" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "data_nascimento" date NOT NULL,
+  "genero" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("genero" IN ('M', 'F')),
+  "email" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "telefone1" integer NOT NULL,
+  "telefone2" integer,
+  "endereco" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "user_id" integer NOT NULL,
+  "quantidade_produtos" integer NOT NULL,
+  "provincia_id" integer NOT NULL,
+  "estado" integer,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."fases_avaliacoes" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."finalidade" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(70) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."financiamento" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."forma_pagamento" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(75) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."formato" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."fornecedor" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "codigo" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "nuit" varchar(20) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "nome" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "telefone1" varchar(20) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "telefone2" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "email" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "id_provincia" integer NOT NULL,
+  "id_distrito" integer NOT NULL,
+  "endereco" varchar(150) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."funcao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "sigla" varchar(10) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."genero" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."grupo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "sigla" varchar(20) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "descricao" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "email" text COLLATE "public"."mysql_ci_ai",
+  "secretaria_geral" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("secretaria_geral" IN ('0', '1')),
+  "cdi" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("cdi" IN ('0', '1')),
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "tipo_grupo_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "superior_id" integer NOT NULL,
+  "inferior_id" smallint NOT NULL,
+  "is_sic" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("is_sic" IN ('0', '1'))
+);
+
+CREATE TABLE "public"."grupo_funcao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "grupo_id" integer NOT NULL,
+  "funcao_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."grupo_user" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "user_id" integer NOT NULL,
+  "grupo_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "funcao_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."historico" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "tabela" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "row_id" integer NOT NULL,
+  "user_id" integer,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "user_requerente_id" integer,
+  "requerente_id" integer
+);
+
+CREATE TABLE "public"."insumo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "valor" real NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."insumokit" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "quantidade" real NOT NULL,
+  "unidade" varchar(5) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "custo" real NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado" integer NOT NULL,
+  "insumo_id" integer NOT NULL,
+  "kit_id" integer NOT NULL,
+  "user_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."justificacao_faltas" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "justificacao" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "processo_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."lingua" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "nome" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."linha_financiamento" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."local_entrada" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(150) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."localidade" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "posto_adminstrativo_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."login_otp" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "desafio" varchar(64) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "codigo" varchar(64) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "tipo" varchar(20) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "conta_id" integer NOT NULL,
+  "email" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "alterar_senha" boolean NOT NULL,
+  "tentativas" integer NOT NULL,
+  "reenvios" integer NOT NULL,
+  "estado" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("estado" IN ('1', '0')),
+  "expires_at" timestamp NOT NULL,
+  "enviado_em" timestamp NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."logs" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "tabela" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "id_row" integer,
+  "accao" varchar(6) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("accao" IN ('insert', 'read', 'update', 'delete')),
+  "user_id" integer,
+  "requerente_id" integer,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."nivel_representacao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."notification" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "conteudo" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "user_id" integer,
+  "grupo_id" integer,
+  "processo_id" integer NOT NULL,
+  "estado" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("estado" IN ('0', '1')),
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."numeracao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "numero" integer NOT NULL,
+  "grupo" varchar(20) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "instituicao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "ano" integer NOT NULL,
+  "tipo" varchar(8) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("tipo" IN ('processo', 'arquivo')),
+  "tipo_processo" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "estado" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("estado" IN ('1', '0')),
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."pacote_solicitacao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "quantidade" integer NOT NULL,
+  "insumo_id" integer NOT NULL,
+  "data" date,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "solicitacao_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."pagamento_estado" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."pagamentos" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "valor_pago" real NOT NULL,
+  "valor_total" real NOT NULL,
+  "forma_pagamento_id" integer NOT NULL,
+  "prestacao_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "data_pagamento" date,
+  "banco_destino_id" integer NOT NULL,
+  "pagamento_estado_id" integer NOT NULL,
+  "numero_conta" varchar(25) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."pedido_dispensa" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "duracao_dispensa" integer NOT NULL,
+  "inicio_dispensa" date NOT NULL,
+  "justificacao_dispensa" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "processo_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."pedido_ferias" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "duracao_ferias" integer NOT NULL,
+  "inicio_ferias" date NOT NULL,
+  "processo_id" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."periodicidade" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "days" integer NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."permissoes" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(40) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."permissoes_user" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "user_id" integer NOT NULL,
+  "escrever" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("escrever" IN ('0', '1')),
+  "ler" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("ler" IN ('0', '1')),
+  "actualicar" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("actualicar" IN ('0', '1')),
+  "eliminar" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("eliminar" IN ('0', '1')),
+  "estado" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."posicao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."posto_adminstrativo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "distrito_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."prateleira" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."prestacoes" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "valor" real NOT NULL,
+  "interest" real NOT NULL,
+  "principal" real NOT NULL,
+  "saldo_inicial" real NOT NULL,
+  "saldo_final" real NOT NULL,
+  "cumulative_interest" real NOT NULL,
+  "data_pagamento" date,
+  "pagamento_estado_id" integer NOT NULL,
+  "periodicidade" integer NOT NULL,
+  "credito_id" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "solicitacao_id" integer NOT NULL,
+  "em_mora" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."privilegio_perfil" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "tipo_usuario_id" integer NOT NULL,
+  "accao" varchar(40) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "permitido" boolean NOT NULL,
+  "user_id" integer,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."processo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "numero" text COLLATE "public"."mysql_ci_ai",
+  "visibilidade_processo_id" integer NOT NULL,
+  "assunto" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "tipo_processo_id" integer NOT NULL,
+  "referencia_origem" text COLLATE "public"."mysql_ci_ai",
+  "prazo" integer NOT NULL,
+  "finalidade_id" integer,
+  "urgencia_id" integer NOT NULL,
+  "justificacao_urgencia" text COLLATE "public"."mysql_ci_ai",
+  "local_entrada_id" integer NOT NULL,
+  "requerente_id" integer,
+  "responsavel_id" integer,
+  "data_termino" timestamp,
+  "estado" integer NOT NULL,
+  "user_id" integer,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "responsavel_grupo_id" integer,
+  "estado_externo_id" integer NOT NULL DEFAULT 1,
+  "replicado_de" integer,
+  "disponivel_secretaria" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("disponivel_secretaria" IN ('0', '1')),
+  "user_requerente_id" integer,
+  "motivo" varchar(150) COLLATE "public"."mysql_ci_ai",
+  "estado_envio" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("estado_envio" IN ('0', '1')),
+  "motivo_reactivar" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '',
+  "grupo_id" integer,
+  "delegacao_id" integer,
+  "confidencial" integer NOT NULL DEFAULT 0
+);
+
+COMMENT ON COLUMN "public"."processo"."replicado_de" IS 'Este campo, irá receber o id do processo do qual ele nasceu.';
+
+COMMENT ON COLUMN "public"."processo"."disponivel_secretaria" IS 'Este campo vai possibilitar mostrar todos os processos externos e os pertencentes a secretaria';
+
+CREATE TABLE "public"."provincia" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "nome" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL
+);
+
+CREATE TABLE "public"."requerente" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "tipo_entidade_id" integer NOT NULL,
+  "nome" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "genero" varchar(1) COLLATE "public"."mysql_ci_ai" CHECK ("genero" IN ('M', 'F')),
+  "telefone1" integer,
+  "telefone2" integer,
+  "tipo_documento_id" integer,
+  "numero_documento" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "nuit" integer,
+  "endereco" text COLLATE "public"."mysql_ci_ai",
+  "email" varchar(100) COLLATE "public"."mysql_ci_ai",
+  "data_nascimento" date,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "password" varchar(255) COLLATE "public"."mysql_ci_ai" DEFAULT '$pbkdf2-sha256$29000$AKAUQihlLKX0XouR8v4f4w$7X3BPfGRM7g7zSKuAuP7Dz95Upt4IVdB7xk/Zajtjg4',
+  "id_provincia" integer,
+  "id_distrito" integer,
+  "id_posto" integer,
+  "localidade" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "bairro" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "estado_envio" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("estado_envio" IN ('0', '1')),
+  "apelido" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '',
+  "foto" varchar(255) COLLATE "public"."mysql_ci_ai"
+);
+
+CREATE TABLE "public"."requerente_backup_20261017" (
+  "id" integer NOT NULL DEFAULT 0,
+  "tipo_entidade_id" integer NOT NULL,
+  "nome" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "genero" varchar(1) COLLATE "public"."mysql_ci_ai" CHECK ("genero" IN ('M', 'F')),
+  "telefone1" integer,
+  "telefone2" integer,
+  "tipo_documento_id" integer,
+  "numero_documento" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "nuit" integer,
+  "endereco" text COLLATE "public"."mysql_ci_ai",
+  "email" varchar(100) COLLATE "public"."mysql_ci_ai",
+  "data_nascimento" date,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "password" varchar(255) COLLATE "public"."mysql_ci_ai" DEFAULT '$pbkdf2-sha256$29000$AKAUQihlLKX0XouR8v4f4w$7X3BPfGRM7g7zSKuAuP7Dz95Upt4IVdB7xk/Zajtjg4',
+  "id_provincia" integer,
+  "id_distrito" integer,
+  "id_posto" integer,
+  "localidade" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "bairro" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "estado_envio" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("estado_envio" IN ('0', '1'))
+);
+
+CREATE TABLE "public"."reset_password" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "proveniencia" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("proveniencia" IN ('1', '2')),
+  "code" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "user_id" integer NOT NULL,
+  "email" varchar(255) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("estado" IN ('1', '0')),
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."responsavel" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "tipo_entidade_id" integer NOT NULL,
+  "nome" varchar(75) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "email" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "data_nascimento" date,
+  "genero" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "telefone1" integer NOT NULL,
+  "telefone2" integer,
+  "tipo_documento_id" integer NOT NULL,
+  "numero_documento" varchar(15) COLLATE "public"."mysql_ci_ai",
+  "nuit" integer,
+  "endereco" varchar(200) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "password" text COLLATE "public"."mysql_ci_ai",
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."solicitacao" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "tempo_retorno" integer NOT NULL,
+  "prestacao_prevista" real NOT NULL,
+  "processo_id" integer,
+  "valor_solicitado" real NOT NULL,
+  "valor_pace" real,
+  "user_id" integer NOT NULL,
+  "codigo" varchar(30) COLLATE "public"."mysql_ci_ai",
+  "periodicidade_id" integer NOT NULL,
+  "tipo_financiamento_id" integer NOT NULL,
+  "finalidade_id" integer,
+  "linha_financiamento_id" integer,
+  "tipo_actividade_id" integer,
+  "responsavel_id" integer,
+  "entidade_id" integer,
+  "categoria_kit_id" integer,
+  "estado" integer NOT NULL,
+  "estado_fase_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."taxa_desconto" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "idade_inicial" integer NOT NULL,
+  "idade_final" integer NOT NULL,
+  "juro" real NOT NULL
+);
+
+CREATE TABLE "public"."tipo_actividade" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "designacao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."tipo_anexo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."tipo_anotacoes" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."tipo_deseembolso" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."tipo_documento" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."tipo_entidade" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."tipo_equipamento" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(100) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."tipo_financiamento" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."tipo_garantia" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."tipo_grupo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL
+);
+
+CREATE TABLE "public"."tipo_processo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "sigla" varchar(20) COLLATE "public"."mysql_ci_ai",
+  "descricao" varchar(70) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "prazo" integer NOT NULL,
+  "tipo" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL CHECK ("tipo" IN ('1', '2', '3'))
+);
+
+COMMENT ON COLUMN "public"."tipo_processo"."tipo" IS '1 => Interno, 2 => externo, 3 => todos';
+
+CREATE TABLE "public"."tipo_usuario" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(40) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."token_blocklist" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "jti" varchar(64) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "expires_at" timestamp,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."urgencia" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(50) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "public"."user_requerente" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "email" varchar(80) COLLATE "public"."mysql_ci_ai",
+  "nuit" integer,
+  "password" varchar(255) COLLATE "public"."mysql_ci_ai",
+  "nome" varchar(80) COLLATE "public"."mysql_ci_ai",
+  "estado" integer,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "nr_cedula" integer
+);
+
+CREATE TABLE "public"."users" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "nome" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "apelido" text COLLATE "public"."mysql_ci_ai",
+  "username" text COLLATE "public"."mysql_ci_ai",
+  "email" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "password" text COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "tipo_usuario_id" integer NOT NULL,
+  "estado" integer NOT NULL DEFAULT 1,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "delegacao_id" integer NOT NULL DEFAULT 1,
+  "estado_envio" varchar(1) COLLATE "public"."mysql_ci_ai" NOT NULL DEFAULT '0' CHECK ("estado_envio" IN ('0', '1')),
+  "foto" varchar(255) COLLATE "public"."mysql_ci_ai"
+);
+
+CREATE TABLE "public"."visibilidade_processo" (
+  "id" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+  "descricao" varchar(30) COLLATE "public"."mysql_ci_ai" NOT NULL,
+  "estado" integer NOT NULL,
+  "user_id" integer NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE "public"."alembic_version" ADD CONSTRAINT "alembic_version_pkey" PRIMARY KEY ("version_num");
+
+ALTER TABLE "public"."anexos" ADD CONSTRAINT "anexos_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "anexos_estado" ON "public"."anexos" ("estado");
+
+CREATE INDEX "anexos_user_id" ON "public"."anexos" ("user_id");
+
+ALTER TABLE "public"."anotacoes" ADD CONSTRAINT "anotacoes_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."armario" ADD CONSTRAINT "armario_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."armario" ADD CONSTRAINT "armario_descricao" UNIQUE ("descricao");
+
+CREATE INDEX "armario_estado" ON "public"."armario" ("estado");
+
+CREATE INDEX "armario_user_id" ON "public"."armario" ("user_id");
+
+ALTER TABLE "public"."armario_prateleira" ADD CONSTRAINT "armario_prateleira_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "armario_prateleira_armario_id" ON "public"."armario_prateleira" ("armario_id");
+
+CREATE INDEX "armario_prateleira_estado" ON "public"."armario_prateleira" ("estado");
+
+CREATE INDEX "armario_prateleira_prateleira_id" ON "public"."armario_prateleira" ("prateleira_id");
+
+CREATE INDEX "armario_prateleira_user_id" ON "public"."armario_prateleira" ("user_id");
+
+ALTER TABLE "public"."autor" ADD CONSTRAINT "autor_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."autor" ADD CONSTRAINT "autor_descricao" UNIQUE ("nome");
+
+CREATE INDEX "autor_estado" ON "public"."autor" ("estado");
+
+CREATE INDEX "autor_user_id" ON "public"."autor" ("user_id");
+
+ALTER TABLE "public"."avaliacao_comite" ADD CONSTRAINT "avaliacao_comite_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "avaliacao_comite_estado" ON "public"."avaliacao_comite" ("estado");
+
+CREATE INDEX "avaliacao_comite_estado_fase_id" ON "public"."avaliacao_comite" ("estado_fase_id");
+
+CREATE INDEX "avaliacao_comite_periodicidade_id" ON "public"."avaliacao_comite" ("periodicidade_id");
+
+CREATE INDEX "avaliacao_comite_solicitacao_id" ON "public"."avaliacao_comite" ("solicitacao_id");
+
+ALTER TABLE "public"."avaliacao_tecnica" ADD CONSTRAINT "avaliacao_tecnica_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "avaliacao_tecnica_estado" ON "public"."avaliacao_tecnica" ("estado");
+
+CREATE INDEX "avaliacao_tecnica_estado_fase_id" ON "public"."avaliacao_tecnica" ("estado_fase_id");
+
+CREATE INDEX "avaliacao_tecnica_periodicidade_sugerida_id" ON "public"."avaliacao_tecnica" ("periodicidade_sugerida_id");
+
+CREATE INDEX "avaliacao_tecnica_solicitacao_id" ON "public"."avaliacao_tecnica" ("solicitacao_id");
+
+ALTER TABLE "public"."banco" ADD CONSTRAINT "banco_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "banco_estado" ON "public"."banco" ("estado");
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "catalogacao_armario_id" ON "public"."catalogacao" ("armario_id");
+
+CREATE INDEX "catalogacao_autor_id" ON "public"."catalogacao" ("autor_id");
+
+CREATE INDEX "catalogacao_estado_emenda_id" ON "public"."catalogacao" ("estado_emenda_id");
+
+CREATE INDEX "catalogacao_formato_id" ON "public"."catalogacao" ("formato_id");
+
+CREATE INDEX "catalogacao_lingua_id" ON "public"."catalogacao" ("lingua_id");
+
+CREATE INDEX "catalogacao_prateleira_id" ON "public"."catalogacao" ("prateleira_id");
+
+CREATE INDEX "catalogacao_tipo_documento_id" ON "public"."catalogacao" ("tipo_documento_id");
+
+CREATE INDEX "catalogacao_user_id" ON "public"."catalogacao" ("user_id");
+
+ALTER TABLE "public"."categoriakit" ADD CONSTRAINT "categoriakit_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."categoriakit" ADD CONSTRAINT "categoriakit_designacao" UNIQUE ("designacao");
+
+CREATE INDEX "categoriakit_estado" ON "public"."categoriakit" ("estado");
+
+ALTER TABLE "public"."config" ADD CONSTRAINT "config_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."contrato" ADD CONSTRAINT "contrato_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "contrato_estado" ON "public"."contrato" ("estado");
+
+CREATE INDEX "contrato_solicitacao_id" ON "public"."contrato" ("solicitacao_id");
+
+ALTER TABLE "public"."credito" ADD CONSTRAINT "credito_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "credito_aprovacao_comite_id" ON "public"."credito" ("aprovacao_comite_id");
+
+CREATE INDEX "credito_codigo_solitacacao_id" ON "public"."credito" ("codigo_solitacacao_id");
+
+CREATE INDEX "credito_estado" ON "public"."credito" ("estado");
+
+ALTER TABLE "public"."desembolso" ADD CONSTRAINT "desembolso_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "desembolso_banco_destino_id" ON "public"."desembolso" ("banco_destino_id");
+
+CREATE INDEX "desembolso_codigo_solitacacao_id" ON "public"."desembolso" ("codigo_solitacacao_id");
+
+CREATE INDEX "desembolso_estado_id" ON "public"."desembolso" ("estado_id");
+
+CREATE INDEX "desembolso_periodicidade_id" ON "public"."desembolso" ("periodicidade_id");
+
+CREATE INDEX "desembolso_tipo_deseembolso_id" ON "public"."desembolso" ("tipo_deseembolso_id");
+
+ALTER TABLE "public"."detalhes_processo" ADD CONSTRAINT "detalhes_processo_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."detalhes_requerente" ADD CONSTRAINT "detalhes_requerente_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "detalhes_requerente_requerente_id" ON "public"."detalhes_requerente" ("requerente_id");
+
+ALTER TABLE "public"."distrito" ADD CONSTRAINT "distrito_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."distrito" ADD CONSTRAINT "distrito_nome" UNIQUE ("nome");
+
+CREATE INDEX "distrito_provincia_id" ON "public"."distrito" ("provincia_id");
+
+ALTER TABLE "public"."email_logs" ADD CONSTRAINT "email_logs_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "email_logs_ix_email_logs_sent_at" ON "public"."email_logs" ("sent_at");
+
+CREATE INDEX "email_logs_user_id" ON "public"."email_logs" ("user_id");
+
+ALTER TABLE "public"."emprestimo" ADD CONSTRAINT "emprestimo_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "emprestimo_catalogacao_id" ON "public"."emprestimo" ("catalogacao_id");
+
+CREATE INDEX "emprestimo_estado" ON "public"."emprestimo" ("estado");
+
+CREATE INDEX "emprestimo_funcionario_id" ON "public"."emprestimo" ("funcionario_id");
+
+ALTER TABLE "public"."encaminhamento" ADD CONSTRAINT "encaminhamento_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."entidade" ADD CONSTRAINT "entidade_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "entidade_estado" ON "public"."entidade" ("estado");
+
+ALTER TABLE "public"."equipamento" ADD CONSTRAINT "equipamento_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."equipamento" ADD CONSTRAINT "equipamento_codigo" UNIQUE ("codigo");
+
+ALTER TABLE "public"."equipamento" ADD CONSTRAINT "equipamento_descricao" UNIQUE ("descricao");
+
+CREATE INDEX "equipamento_estado" ON "public"."equipamento" ("estado");
+
+CREATE INDEX "equipamento_tipo_equipamento_id" ON "public"."equipamento" ("tipo_equipamento_id");
+
+ALTER TABLE "public"."equipamento_solicitacao" ADD CONSTRAINT "equipamento_solicitacao_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "equipamento_solicitacao_equipamento_id" ON "public"."equipamento_solicitacao" ("equipamento_id");
+
+CREATE INDEX "equipamento_solicitacao_estado" ON "public"."equipamento_solicitacao" ("estado");
+
+CREATE INDEX "equipamento_solicitacao_solicitacao_id" ON "public"."equipamento_solicitacao" ("solicitacao_id");
+
+ALTER TABLE "public"."error_logs" ADD CONSTRAINT "error_logs_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "error_logs_ix_error_logs_created_at" ON "public"."error_logs" ("created_at");
+
+CREATE INDEX "error_logs_ix_error_logs_tipo_data" ON "public"."error_logs" ("error_type", "created_at");
+
+CREATE INDEX "error_logs_requerente_id" ON "public"."error_logs" ("requerente_id");
+
+CREATE INDEX "error_logs_user_id" ON "public"."error_logs" ("user_id");
+
+ALTER TABLE "public"."estado_civil" ADD CONSTRAINT "estado_civil_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "estado_civil_estado" ON "public"."estado_civil" ("estado");
+
+ALTER TABLE "public"."estados" ADD CONSTRAINT "estados_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."estados_externo" ADD CONSTRAINT "estados_externo_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."extencionista" ADD CONSTRAINT "extencionista_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "extencionista_estado" ON "public"."extencionista" ("estado");
+
+CREATE INDEX "extencionista_provincia_id" ON "public"."extencionista" ("provincia_id");
+
+ALTER TABLE "public"."fases_avaliacoes" ADD CONSTRAINT "fases_avaliacoes_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."finalidade" ADD CONSTRAINT "finalidade_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."financiamento" ADD CONSTRAINT "financiamento_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."forma_pagamento" ADD CONSTRAINT "forma_pagamento_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "forma_pagamento_estado" ON "public"."forma_pagamento" ("estado");
+
+ALTER TABLE "public"."formato" ADD CONSTRAINT "formato_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."formato" ADD CONSTRAINT "formato_descricao" UNIQUE ("descricao");
+
+CREATE INDEX "formato_estado" ON "public"."formato" ("estado");
+
+CREATE INDEX "formato_user_id" ON "public"."formato" ("user_id");
+
+ALTER TABLE "public"."fornecedor" ADD CONSTRAINT "fornecedor_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."fornecedor" ADD CONSTRAINT "fornecedor_codigo" UNIQUE ("codigo");
+
+CREATE INDEX "fornecedor_estado" ON "public"."fornecedor" ("estado");
+
+CREATE INDEX "fornecedor_id_distrito" ON "public"."fornecedor" ("id_distrito");
+
+CREATE INDEX "fornecedor_id_provincia" ON "public"."fornecedor" ("id_provincia");
+
+ALTER TABLE "public"."fornecedor" ADD CONSTRAINT "fornecedor_nuit" UNIQUE ("nuit");
+
+ALTER TABLE "public"."funcao" ADD CONSTRAINT "funcao_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."genero" ADD CONSTRAINT "genero_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "genero_estado" ON "public"."genero" ("estado");
+
+ALTER TABLE "public"."grupo" ADD CONSTRAINT "grupo_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."grupo_funcao" ADD CONSTRAINT "grupo_funcao_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "grupo_funcao_estado" ON "public"."grupo_funcao" ("estado");
+
+CREATE INDEX "grupo_funcao_funcao_id" ON "public"."grupo_funcao" ("funcao_id");
+
+CREATE INDEX "grupo_funcao_grupo_id" ON "public"."grupo_funcao" ("grupo_id");
+
+CREATE INDEX "grupo_funcao_user_id" ON "public"."grupo_funcao" ("user_id");
+
+ALTER TABLE "public"."grupo_user" ADD CONSTRAINT "grupo_user_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "grupo_user_funcao_id" ON "public"."grupo_user" ("funcao_id");
+
+CREATE INDEX "grupo_user_grupo_user_ibfk_1" ON "public"."grupo_user" ("user_id");
+
+CREATE INDEX "grupo_user_grupo_user_ibfk_2" ON "public"."grupo_user" ("grupo_id");
+
+CREATE INDEX "grupo_user_grupo_user_ibfk_3" ON "public"."grupo_user" ("estado");
+
+ALTER TABLE "public"."historico" ADD CONSTRAINT "historico_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."insumo" ADD CONSTRAINT "insumo_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."insumo" ADD CONSTRAINT "insumo_descricao" UNIQUE ("descricao");
+
+CREATE INDEX "insumo_estado" ON "public"."insumo" ("estado");
+
+ALTER TABLE "public"."insumokit" ADD CONSTRAINT "insumokit_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "insumokit_estado" ON "public"."insumokit" ("estado");
+
+CREATE INDEX "insumokit_insumo_id" ON "public"."insumokit" ("insumo_id");
+
+CREATE INDEX "insumokit_kit_id" ON "public"."insumokit" ("kit_id");
+
+ALTER TABLE "public"."justificacao_faltas" ADD CONSTRAINT "justificacao_faltas_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "justificacao_faltas_estado" ON "public"."justificacao_faltas" ("estado");
+
+CREATE INDEX "justificacao_faltas_processo_id" ON "public"."justificacao_faltas" ("processo_id");
+
+ALTER TABLE "public"."lingua" ADD CONSTRAINT "lingua_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "lingua_estado" ON "public"."lingua" ("estado");
+
+ALTER TABLE "public"."lingua" ADD CONSTRAINT "lingua_nome" UNIQUE ("nome");
+
+CREATE INDEX "lingua_user_id" ON "public"."lingua" ("user_id");
+
+ALTER TABLE "public"."linha_financiamento" ADD CONSTRAINT "linha_financiamento_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."linha_financiamento" ADD CONSTRAINT "linha_financiamento_descricao" UNIQUE ("descricao");
+
+CREATE INDEX "linha_financiamento_estado" ON "public"."linha_financiamento" ("estado");
+
+ALTER TABLE "public"."local_entrada" ADD CONSTRAINT "local_entrada_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "local_entrada_estado" ON "public"."local_entrada" ("estado");
+
+ALTER TABLE "public"."localidade" ADD CONSTRAINT "localidade_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."localidade" ADD CONSTRAINT "localidade_descricao" UNIQUE ("descricao");
+
+CREATE INDEX "localidade_posto_adminstrativo_id" ON "public"."localidade" ("posto_adminstrativo_id");
+
+ALTER TABLE "public"."login_otp" ADD CONSTRAINT "login_otp_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."login_otp" ADD CONSTRAINT "login_otp_ix_login_otp_desafio" UNIQUE ("desafio");
+
+ALTER TABLE "public"."logs" ADD CONSTRAINT "logs_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "logs_ix_logs_created_at" ON "public"."logs" ("created_at");
+
+CREATE INDEX "logs_ix_logs_tabela_id_row" ON "public"."logs" ("tabela", "id_row");
+
+ALTER TABLE "public"."nivel_representacao" ADD CONSTRAINT "nivel_representacao_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "nivel_representacao_estado" ON "public"."nivel_representacao" ("estado");
+
+ALTER TABLE "public"."notification" ADD CONSTRAINT "notification_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."numeracao" ADD CONSTRAINT "numeracao_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."pacote_solicitacao" ADD CONSTRAINT "pacote_solicitacao_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "pacote_solicitacao_estado" ON "public"."pacote_solicitacao" ("estado");
+
+CREATE INDEX "pacote_solicitacao_insumo_id" ON "public"."pacote_solicitacao" ("insumo_id");
+
+CREATE INDEX "pacote_solicitacao_solicitacao_id" ON "public"."pacote_solicitacao" ("solicitacao_id");
+
+ALTER TABLE "public"."pagamento_estado" ADD CONSTRAINT "pagamento_estado_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."pagamentos" ADD CONSTRAINT "pagamentos_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "pagamentos_banco_destino_id" ON "public"."pagamentos" ("banco_destino_id");
+
+CREATE INDEX "pagamentos_estado" ON "public"."pagamentos" ("estado");
+
+CREATE INDEX "pagamentos_forma_pagamento_id" ON "public"."pagamentos" ("forma_pagamento_id");
+
+CREATE INDEX "pagamentos_pagamento_estado_id" ON "public"."pagamentos" ("pagamento_estado_id");
+
+CREATE INDEX "pagamentos_prestacao_id" ON "public"."pagamentos" ("prestacao_id");
+
+ALTER TABLE "public"."pedido_dispensa" ADD CONSTRAINT "pedido_dispensa_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "pedido_dispensa_estado" ON "public"."pedido_dispensa" ("estado");
+
+CREATE INDEX "pedido_dispensa_processo_id" ON "public"."pedido_dispensa" ("processo_id");
+
+ALTER TABLE "public"."pedido_ferias" ADD CONSTRAINT "pedido_ferias_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "pedido_ferias_estado" ON "public"."pedido_ferias" ("estado");
+
+CREATE INDEX "pedido_ferias_processo_id" ON "public"."pedido_ferias" ("processo_id");
+
+ALTER TABLE "public"."periodicidade" ADD CONSTRAINT "periodicidade_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "periodicidade_estado" ON "public"."periodicidade" ("estado");
+
+ALTER TABLE "public"."permissoes" ADD CONSTRAINT "permissoes_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."permissoes_user" ADD CONSTRAINT "permissoes_user_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."posicao" ADD CONSTRAINT "posicao_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "posicao_estado" ON "public"."posicao" ("estado");
+
+ALTER TABLE "public"."posto_adminstrativo" ADD CONSTRAINT "posto_adminstrativo_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "posto_adminstrativo_distrito_id" ON "public"."posto_adminstrativo" ("distrito_id");
+
+CREATE INDEX "posto_adminstrativo_estado" ON "public"."posto_adminstrativo" ("estado");
+
+ALTER TABLE "public"."posto_adminstrativo" ADD CONSTRAINT "posto_adminstrativo_uq_posto_distrito_descricao" UNIQUE ("distrito_id", "descricao");
+
+ALTER TABLE "public"."prateleira" ADD CONSTRAINT "prateleira_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."prateleira" ADD CONSTRAINT "prateleira_descricao" UNIQUE ("descricao");
+
+CREATE INDEX "prateleira_estado" ON "public"."prateleira" ("estado");
+
+CREATE INDEX "prateleira_user_id" ON "public"."prateleira" ("user_id");
+
+ALTER TABLE "public"."prestacoes" ADD CONSTRAINT "prestacoes_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "prestacoes_credito_id" ON "public"."prestacoes" ("credito_id");
+
+CREATE INDEX "prestacoes_estado_id" ON "public"."prestacoes" ("estado_id");
+
+CREATE INDEX "prestacoes_pagamento_estado_id" ON "public"."prestacoes" ("pagamento_estado_id");
+
+CREATE INDEX "prestacoes_periodicidade" ON "public"."prestacoes" ("periodicidade");
+
+CREATE INDEX "prestacoes_solicitacao_id" ON "public"."prestacoes" ("solicitacao_id");
+
+ALTER TABLE "public"."privilegio_perfil" ADD CONSTRAINT "privilegio_perfil_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."privilegio_perfil" ADD CONSTRAINT "privilegio_perfil_uq_privilegio_perfil_tipo_accao" UNIQUE ("tipo_usuario_id", "accao");
+
+ALTER TABLE "public"."processo" ADD CONSTRAINT "processo_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "processo_finalidade_id" ON "public"."processo" ("finalidade_id");
+
+CREATE INDEX "processo_local_entrada_id" ON "public"."processo" ("local_entrada_id");
+
+CREATE INDEX "processo_tipo_processo_id" ON "public"."processo" ("tipo_processo_id");
+
+CREATE INDEX "processo_urgencia_id" ON "public"."processo" ("urgencia_id");
+
+CREATE INDEX "processo_user_requerente_id" ON "public"."processo" ("user_requerente_id");
+
+ALTER TABLE "public"."provincia" ADD CONSTRAINT "provincia_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."provincia" ADD CONSTRAINT "provincia_nome" UNIQUE ("nome");
+
+ALTER TABLE "public"."requerente" ADD CONSTRAINT "requerente_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."requerente" ADD CONSTRAINT "requerente_email" UNIQUE ("email");
+
+CREATE INDEX "requerente_fk_requerente_distrito" ON "public"."requerente" ("id_distrito");
+
+CREATE INDEX "requerente_fk_requerente_posto" ON "public"."requerente" ("id_posto");
+
+CREATE INDEX "requerente_fk_requerente_provincia" ON "public"."requerente" ("id_provincia");
+
+ALTER TABLE "public"."requerente" ADD CONSTRAINT "requerente_nuit" UNIQUE ("nuit");
+
+ALTER TABLE "public"."reset_password" ADD CONSTRAINT "reset_password_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."responsavel" ADD CONSTRAINT "responsavel_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "responsavel_estado" ON "public"."responsavel" ("estado");
+
+CREATE INDEX "responsavel_tipo_documento_id" ON "public"."responsavel" ("tipo_documento_id");
+
+CREATE INDEX "responsavel_tipo_entidade_id" ON "public"."responsavel" ("tipo_entidade_id");
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "solicitacao_categoria_kit_id" ON "public"."solicitacao" ("categoria_kit_id");
+
+CREATE INDEX "solicitacao_entidade_id" ON "public"."solicitacao" ("entidade_id");
+
+CREATE INDEX "solicitacao_estado" ON "public"."solicitacao" ("estado");
+
+CREATE INDEX "solicitacao_estado_fase_id" ON "public"."solicitacao" ("estado_fase_id");
+
+CREATE INDEX "solicitacao_finalidade_id" ON "public"."solicitacao" ("finalidade_id");
+
+CREATE INDEX "solicitacao_linha_financiamento_id" ON "public"."solicitacao" ("linha_financiamento_id");
+
+CREATE INDEX "solicitacao_periodicidade_id" ON "public"."solicitacao" ("periodicidade_id");
+
+CREATE INDEX "solicitacao_responsavel_id" ON "public"."solicitacao" ("responsavel_id");
+
+CREATE INDEX "solicitacao_tipo_actividade_id" ON "public"."solicitacao" ("tipo_actividade_id");
+
+CREATE INDEX "solicitacao_tipo_financiamento_id" ON "public"."solicitacao" ("tipo_financiamento_id");
+
+ALTER TABLE "public"."taxa_desconto" ADD CONSTRAINT "taxa_desconto_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."tipo_actividade" ADD CONSTRAINT "tipo_actividade_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "tipo_actividade_estado" ON "public"."tipo_actividade" ("estado");
+
+ALTER TABLE "public"."tipo_anexo" ADD CONSTRAINT "tipo_anexo_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "tipo_anexo_estado" ON "public"."tipo_anexo" ("estado");
+
+ALTER TABLE "public"."tipo_anotacoes" ADD CONSTRAINT "tipo_anotacoes_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."tipo_deseembolso" ADD CONSTRAINT "tipo_deseembolso_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "tipo_deseembolso_estado" ON "public"."tipo_deseembolso" ("estado");
+
+ALTER TABLE "public"."tipo_documento" ADD CONSTRAINT "tipo_documento_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."tipo_entidade" ADD CONSTRAINT "tipo_entidade_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."tipo_equipamento" ADD CONSTRAINT "tipo_equipamento_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."tipo_equipamento" ADD CONSTRAINT "tipo_equipamento_descricao" UNIQUE ("descricao");
+
+CREATE INDEX "tipo_equipamento_estado" ON "public"."tipo_equipamento" ("estado");
+
+ALTER TABLE "public"."tipo_financiamento" ADD CONSTRAINT "tipo_financiamento_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "tipo_financiamento_estado" ON "public"."tipo_financiamento" ("estado");
+
+ALTER TABLE "public"."tipo_garantia" ADD CONSTRAINT "tipo_garantia_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "tipo_garantia_estado" ON "public"."tipo_garantia" ("estado");
+
+ALTER TABLE "public"."tipo_grupo" ADD CONSTRAINT "tipo_grupo_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."tipo_processo" ADD CONSTRAINT "tipo_processo_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."tipo_usuario" ADD CONSTRAINT "tipo_usuario_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "tipo_usuario_estado" ON "public"."tipo_usuario" ("estado");
+
+ALTER TABLE "public"."token_blocklist" ADD CONSTRAINT "token_blocklist_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."token_blocklist" ADD CONSTRAINT "token_blocklist_ix_token_blocklist_jti" UNIQUE ("jti");
+
+ALTER TABLE "public"."urgencia" ADD CONSTRAINT "urgencia_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."user_requerente" ADD CONSTRAINT "user_requerente_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE "public"."user_requerente" ADD CONSTRAINT "user_requerente_email" UNIQUE ("email");
+
+ALTER TABLE "public"."user_requerente" ADD CONSTRAINT "user_requerente_nr_cedula" UNIQUE ("nr_cedula");
+
+ALTER TABLE "public"."user_requerente" ADD CONSTRAINT "user_requerente_nuit" UNIQUE ("nuit");
+
+ALTER TABLE "public"."users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "users_estado" ON "public"."users" ("estado");
+
+CREATE INDEX "users_tipo_usuario_id" ON "public"."users" ("tipo_usuario_id");
+
+ALTER TABLE "public"."visibilidade_processo" ADD CONSTRAINT "visibilidade_processo_pkey" PRIMARY KEY ("id");
+
+SELECT setval(pg_get_serial_sequence('"public"."anexos"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."anexos";
+
+SELECT setval(pg_get_serial_sequence('"public"."anotacoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."anotacoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."armario"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."armario";
+
+SELECT setval(pg_get_serial_sequence('"public"."armario_prateleira"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."armario_prateleira";
+
+SELECT setval(pg_get_serial_sequence('"public"."autor"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."autor";
+
+SELECT setval(pg_get_serial_sequence('"public"."avaliacao_comite"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."avaliacao_comite";
+
+SELECT setval(pg_get_serial_sequence('"public"."avaliacao_tecnica"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."avaliacao_tecnica";
+
+SELECT setval(pg_get_serial_sequence('"public"."banco"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."banco";
+
+SELECT setval(pg_get_serial_sequence('"public"."catalogacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."catalogacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."categoriakit"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."categoriakit";
+
+SELECT setval(pg_get_serial_sequence('"public"."config"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."config";
+
+SELECT setval(pg_get_serial_sequence('"public"."contrato"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."contrato";
+
+SELECT setval(pg_get_serial_sequence('"public"."credito"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."credito";
+
+SELECT setval(pg_get_serial_sequence('"public"."desembolso"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."desembolso";
+
+SELECT setval(pg_get_serial_sequence('"public"."detalhes_processo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."detalhes_processo";
+
+SELECT setval(pg_get_serial_sequence('"public"."detalhes_requerente"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."detalhes_requerente";
+
+SELECT setval(pg_get_serial_sequence('"public"."distrito"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."distrito";
+
+SELECT setval(pg_get_serial_sequence('"public"."email_logs"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."email_logs";
+
+SELECT setval(pg_get_serial_sequence('"public"."emprestimo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."emprestimo";
+
+SELECT setval(pg_get_serial_sequence('"public"."encaminhamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."encaminhamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."entidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."entidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."equipamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."equipamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."equipamento_solicitacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."equipamento_solicitacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."error_logs"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."error_logs";
+
+SELECT setval(pg_get_serial_sequence('"public"."estado_civil"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."estado_civil";
+
+SELECT setval(pg_get_serial_sequence('"public"."estados"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."estados";
+
+SELECT setval(pg_get_serial_sequence('"public"."estados_externo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."estados_externo";
+
+SELECT setval(pg_get_serial_sequence('"public"."extencionista"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."extencionista";
+
+SELECT setval(pg_get_serial_sequence('"public"."fases_avaliacoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."fases_avaliacoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."finalidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."finalidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."financiamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."financiamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."forma_pagamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."forma_pagamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."formato"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."formato";
+
+SELECT setval(pg_get_serial_sequence('"public"."fornecedor"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."fornecedor";
+
+SELECT setval(pg_get_serial_sequence('"public"."funcao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."funcao";
+
+SELECT setval(pg_get_serial_sequence('"public"."genero"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."genero";
+
+SELECT setval(pg_get_serial_sequence('"public"."grupo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."grupo";
+
+SELECT setval(pg_get_serial_sequence('"public"."grupo_funcao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."grupo_funcao";
+
+SELECT setval(pg_get_serial_sequence('"public"."grupo_user"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."grupo_user";
+
+SELECT setval(pg_get_serial_sequence('"public"."historico"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."historico";
+
+SELECT setval(pg_get_serial_sequence('"public"."insumo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."insumo";
+
+SELECT setval(pg_get_serial_sequence('"public"."insumokit"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."insumokit";
+
+SELECT setval(pg_get_serial_sequence('"public"."justificacao_faltas"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."justificacao_faltas";
+
+SELECT setval(pg_get_serial_sequence('"public"."lingua"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."lingua";
+
+SELECT setval(pg_get_serial_sequence('"public"."linha_financiamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."linha_financiamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."local_entrada"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."local_entrada";
+
+SELECT setval(pg_get_serial_sequence('"public"."localidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."localidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."login_otp"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."login_otp";
+
+SELECT setval(pg_get_serial_sequence('"public"."logs"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."logs";
+
+SELECT setval(pg_get_serial_sequence('"public"."nivel_representacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."nivel_representacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."notification"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."notification";
+
+SELECT setval(pg_get_serial_sequence('"public"."numeracao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."numeracao";
+
+SELECT setval(pg_get_serial_sequence('"public"."pacote_solicitacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pacote_solicitacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."pagamento_estado"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pagamento_estado";
+
+SELECT setval(pg_get_serial_sequence('"public"."pagamentos"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pagamentos";
+
+SELECT setval(pg_get_serial_sequence('"public"."pedido_dispensa"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pedido_dispensa";
+
+SELECT setval(pg_get_serial_sequence('"public"."pedido_ferias"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pedido_ferias";
+
+SELECT setval(pg_get_serial_sequence('"public"."periodicidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."periodicidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."permissoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."permissoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."permissoes_user"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."permissoes_user";
+
+SELECT setval(pg_get_serial_sequence('"public"."posicao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."posicao";
+
+SELECT setval(pg_get_serial_sequence('"public"."posto_adminstrativo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."posto_adminstrativo";
+
+SELECT setval(pg_get_serial_sequence('"public"."prateleira"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."prateleira";
+
+SELECT setval(pg_get_serial_sequence('"public"."prestacoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."prestacoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."privilegio_perfil"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."privilegio_perfil";
+
+SELECT setval(pg_get_serial_sequence('"public"."processo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."processo";
+
+SELECT setval(pg_get_serial_sequence('"public"."provincia"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."provincia";
+
+SELECT setval(pg_get_serial_sequence('"public"."requerente"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."requerente";
+
+SELECT setval(pg_get_serial_sequence('"public"."reset_password"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."reset_password";
+
+SELECT setval(pg_get_serial_sequence('"public"."responsavel"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."responsavel";
+
+SELECT setval(pg_get_serial_sequence('"public"."solicitacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."solicitacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."taxa_desconto"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."taxa_desconto";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_actividade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_actividade";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_anexo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_anexo";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_anotacoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_anotacoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_deseembolso"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_deseembolso";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_documento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_documento";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_entidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_entidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_equipamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_equipamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_financiamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_financiamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_garantia"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_garantia";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_grupo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_grupo";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_processo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_processo";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_usuario"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_usuario";
+
+SELECT setval(pg_get_serial_sequence('"public"."token_blocklist"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."token_blocklist";
+
+SELECT setval(pg_get_serial_sequence('"public"."urgencia"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."urgencia";
+
+SELECT setval(pg_get_serial_sequence('"public"."user_requerente"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."user_requerente";
+
+SELECT setval(pg_get_serial_sequence('"public"."users"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."users";
+
+SELECT setval(pg_get_serial_sequence('"public"."visibilidade_processo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."visibilidade_processo";
+
+SELECT setval(pg_get_serial_sequence('"public"."anexos"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."anexos";
+
+SELECT setval(pg_get_serial_sequence('"public"."anotacoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."anotacoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."armario"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."armario";
+
+SELECT setval(pg_get_serial_sequence('"public"."armario_prateleira"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."armario_prateleira";
+
+SELECT setval(pg_get_serial_sequence('"public"."autor"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."autor";
+
+SELECT setval(pg_get_serial_sequence('"public"."avaliacao_comite"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."avaliacao_comite";
+
+SELECT setval(pg_get_serial_sequence('"public"."avaliacao_tecnica"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."avaliacao_tecnica";
+
+SELECT setval(pg_get_serial_sequence('"public"."banco"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."banco";
+
+SELECT setval(pg_get_serial_sequence('"public"."catalogacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."catalogacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."categoriakit"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."categoriakit";
+
+SELECT setval(pg_get_serial_sequence('"public"."config"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."config";
+
+SELECT setval(pg_get_serial_sequence('"public"."contrato"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."contrato";
+
+SELECT setval(pg_get_serial_sequence('"public"."credito"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."credito";
+
+SELECT setval(pg_get_serial_sequence('"public"."desembolso"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."desembolso";
+
+SELECT setval(pg_get_serial_sequence('"public"."detalhes_processo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."detalhes_processo";
+
+SELECT setval(pg_get_serial_sequence('"public"."detalhes_requerente"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."detalhes_requerente";
+
+SELECT setval(pg_get_serial_sequence('"public"."distrito"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."distrito";
+
+SELECT setval(pg_get_serial_sequence('"public"."email_logs"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."email_logs";
+
+SELECT setval(pg_get_serial_sequence('"public"."emprestimo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."emprestimo";
+
+SELECT setval(pg_get_serial_sequence('"public"."encaminhamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."encaminhamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."entidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."entidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."equipamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."equipamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."equipamento_solicitacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."equipamento_solicitacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."error_logs"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."error_logs";
+
+SELECT setval(pg_get_serial_sequence('"public"."estado_civil"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."estado_civil";
+
+SELECT setval(pg_get_serial_sequence('"public"."estados"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."estados";
+
+SELECT setval(pg_get_serial_sequence('"public"."estados_externo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."estados_externo";
+
+SELECT setval(pg_get_serial_sequence('"public"."extencionista"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."extencionista";
+
+SELECT setval(pg_get_serial_sequence('"public"."fases_avaliacoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."fases_avaliacoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."finalidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."finalidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."financiamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."financiamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."forma_pagamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."forma_pagamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."formato"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."formato";
+
+SELECT setval(pg_get_serial_sequence('"public"."fornecedor"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."fornecedor";
+
+SELECT setval(pg_get_serial_sequence('"public"."funcao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."funcao";
+
+SELECT setval(pg_get_serial_sequence('"public"."genero"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."genero";
+
+SELECT setval(pg_get_serial_sequence('"public"."grupo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."grupo";
+
+SELECT setval(pg_get_serial_sequence('"public"."grupo_funcao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."grupo_funcao";
+
+SELECT setval(pg_get_serial_sequence('"public"."grupo_user"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."grupo_user";
+
+SELECT setval(pg_get_serial_sequence('"public"."historico"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."historico";
+
+SELECT setval(pg_get_serial_sequence('"public"."insumo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."insumo";
+
+SELECT setval(pg_get_serial_sequence('"public"."insumokit"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."insumokit";
+
+SELECT setval(pg_get_serial_sequence('"public"."justificacao_faltas"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."justificacao_faltas";
+
+SELECT setval(pg_get_serial_sequence('"public"."lingua"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."lingua";
+
+SELECT setval(pg_get_serial_sequence('"public"."linha_financiamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."linha_financiamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."local_entrada"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."local_entrada";
+
+SELECT setval(pg_get_serial_sequence('"public"."localidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."localidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."login_otp"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."login_otp";
+
+SELECT setval(pg_get_serial_sequence('"public"."logs"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."logs";
+
+SELECT setval(pg_get_serial_sequence('"public"."nivel_representacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."nivel_representacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."notification"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."notification";
+
+SELECT setval(pg_get_serial_sequence('"public"."numeracao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."numeracao";
+
+SELECT setval(pg_get_serial_sequence('"public"."pacote_solicitacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pacote_solicitacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."pagamento_estado"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pagamento_estado";
+
+SELECT setval(pg_get_serial_sequence('"public"."pagamentos"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pagamentos";
+
+SELECT setval(pg_get_serial_sequence('"public"."pedido_dispensa"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pedido_dispensa";
+
+SELECT setval(pg_get_serial_sequence('"public"."pedido_ferias"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."pedido_ferias";
+
+SELECT setval(pg_get_serial_sequence('"public"."periodicidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."periodicidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."permissoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."permissoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."permissoes_user"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."permissoes_user";
+
+SELECT setval(pg_get_serial_sequence('"public"."posicao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."posicao";
+
+SELECT setval(pg_get_serial_sequence('"public"."posto_adminstrativo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."posto_adminstrativo";
+
+SELECT setval(pg_get_serial_sequence('"public"."prateleira"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."prateleira";
+
+SELECT setval(pg_get_serial_sequence('"public"."prestacoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."prestacoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."privilegio_perfil"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."privilegio_perfil";
+
+SELECT setval(pg_get_serial_sequence('"public"."processo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."processo";
+
+SELECT setval(pg_get_serial_sequence('"public"."provincia"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."provincia";
+
+SELECT setval(pg_get_serial_sequence('"public"."requerente"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."requerente";
+
+SELECT setval(pg_get_serial_sequence('"public"."reset_password"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."reset_password";
+
+SELECT setval(pg_get_serial_sequence('"public"."responsavel"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."responsavel";
+
+SELECT setval(pg_get_serial_sequence('"public"."solicitacao"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."solicitacao";
+
+SELECT setval(pg_get_serial_sequence('"public"."taxa_desconto"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."taxa_desconto";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_actividade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_actividade";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_anexo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_anexo";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_anotacoes"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_anotacoes";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_deseembolso"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_deseembolso";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_documento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_documento";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_entidade"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_entidade";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_equipamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_equipamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_financiamento"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_financiamento";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_garantia"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_garantia";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_grupo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_grupo";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_processo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_processo";
+
+SELECT setval(pg_get_serial_sequence('"public"."tipo_usuario"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."tipo_usuario";
+
+SELECT setval(pg_get_serial_sequence('"public"."token_blocklist"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."token_blocklist";
+
+SELECT setval(pg_get_serial_sequence('"public"."urgencia"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."urgencia";
+
+SELECT setval(pg_get_serial_sequence('"public"."user_requerente"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."user_requerente";
+
+SELECT setval(pg_get_serial_sequence('"public"."users"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."users";
+
+SELECT setval(pg_get_serial_sequence('"public"."visibilidade_processo"', 'id'), COALESCE(MAX("id"), 1), MAX("id") IS NOT NULL) FROM "public"."visibilidade_processo";
+
+
+CREATE OR REPLACE FUNCTION "public".migr_on_update_timestamp() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE col text;
+BEGIN
+  IF NEW IS DISTINCT FROM OLD THEN
+    FOREACH col IN ARRAY TG_ARGV LOOP
+      IF to_jsonb(NEW) -> col IS NOT DISTINCT FROM to_jsonb(OLD) -> col THEN
+        NEW := jsonb_populate_record(NEW, jsonb_build_object(col, statement_timestamp()));
+      END IF;
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END $$
+;
+
+CREATE TRIGGER "anotacoes_on_update" BEFORE UPDATE ON "public"."anotacoes" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "encaminhamento_on_update" BEFORE UPDATE ON "public"."encaminhamento" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "estados_on_update" BEFORE UPDATE ON "public"."estados" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "finalidade_on_update" BEFORE UPDATE ON "public"."finalidade" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "funcao_on_update" BEFORE UPDATE ON "public"."funcao" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "local_entrada_on_update" BEFORE UPDATE ON "public"."local_entrada" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('created_at', 'updated_at');
+
+CREATE TRIGGER "numeracao_on_update" BEFORE UPDATE ON "public"."numeracao" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "permissoes_on_update" BEFORE UPDATE ON "public"."permissoes" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "permissoes_user_on_update" BEFORE UPDATE ON "public"."permissoes_user" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "processo_on_update" BEFORE UPDATE ON "public"."processo" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "requerente_on_update" BEFORE UPDATE ON "public"."requerente" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "requerente_backup_20261017_on_update" BEFORE UPDATE ON "public"."requerente_backup_20261017" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "tipo_anotacoes_on_update" BEFORE UPDATE ON "public"."tipo_anotacoes" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "tipo_documento_on_update" BEFORE UPDATE ON "public"."tipo_documento" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "tipo_entidade_on_update" BEFORE UPDATE ON "public"."tipo_entidade" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "tipo_processo_on_update" BEFORE UPDATE ON "public"."tipo_processo" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "tipo_usuario_on_update" BEFORE UPDATE ON "public"."tipo_usuario" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "urgencia_on_update" BEFORE UPDATE ON "public"."urgencia" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "users_on_update" BEFORE UPDATE ON "public"."users" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+CREATE TRIGGER "visibilidade_processo_on_update" BEFORE UPDATE ON "public"."visibilidade_processo" FOR EACH ROW EXECUTE FUNCTION "public".migr_on_update_timestamp('updated_at');
+
+ALTER TABLE "public"."anexos" ADD CONSTRAINT "anexos_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."anexos" VALIDATE CONSTRAINT "anexos_ibfk_1";
+
+ALTER TABLE "public"."anexos" ADD CONSTRAINT "anexos_ibfk_2" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."anexos" VALIDATE CONSTRAINT "anexos_ibfk_2";
+
+ALTER TABLE "public"."armario" ADD CONSTRAINT "armario_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."armario" VALIDATE CONSTRAINT "armario_ibfk_1";
+
+ALTER TABLE "public"."armario" ADD CONSTRAINT "armario_ibfk_2" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."armario" VALIDATE CONSTRAINT "armario_ibfk_2";
+
+ALTER TABLE "public"."armario_prateleira" ADD CONSTRAINT "armario_prateleira_ibfk_1" FOREIGN KEY ("armario_id") REFERENCES "public"."armario" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."armario_prateleira" VALIDATE CONSTRAINT "armario_prateleira_ibfk_1";
+
+ALTER TABLE "public"."armario_prateleira" ADD CONSTRAINT "armario_prateleira_ibfk_2" FOREIGN KEY ("prateleira_id") REFERENCES "public"."prateleira" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."armario_prateleira" VALIDATE CONSTRAINT "armario_prateleira_ibfk_2";
+
+ALTER TABLE "public"."armario_prateleira" ADD CONSTRAINT "armario_prateleira_ibfk_3" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."armario_prateleira" VALIDATE CONSTRAINT "armario_prateleira_ibfk_3";
+
+ALTER TABLE "public"."armario_prateleira" ADD CONSTRAINT "armario_prateleira_ibfk_4" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."armario_prateleira" VALIDATE CONSTRAINT "armario_prateleira_ibfk_4";
+
+ALTER TABLE "public"."autor" ADD CONSTRAINT "autor_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."autor" VALIDATE CONSTRAINT "autor_ibfk_1";
+
+ALTER TABLE "public"."autor" ADD CONSTRAINT "autor_ibfk_2" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."autor" VALIDATE CONSTRAINT "autor_ibfk_2";
+
+ALTER TABLE "public"."avaliacao_comite" ADD CONSTRAINT "avaliacao_comite_ibfk_1" FOREIGN KEY ("solicitacao_id") REFERENCES "public"."solicitacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."avaliacao_comite" VALIDATE CONSTRAINT "avaliacao_comite_ibfk_1";
+
+ALTER TABLE "public"."avaliacao_comite" ADD CONSTRAINT "avaliacao_comite_ibfk_2" FOREIGN KEY ("periodicidade_id") REFERENCES "public"."periodicidade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."avaliacao_comite" VALIDATE CONSTRAINT "avaliacao_comite_ibfk_2";
+
+ALTER TABLE "public"."avaliacao_comite" ADD CONSTRAINT "avaliacao_comite_ibfk_3" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."avaliacao_comite" VALIDATE CONSTRAINT "avaliacao_comite_ibfk_3";
+
+ALTER TABLE "public"."avaliacao_comite" ADD CONSTRAINT "avaliacao_comite_ibfk_4" FOREIGN KEY ("estado_fase_id") REFERENCES "public"."fases_avaliacoes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."avaliacao_comite" VALIDATE CONSTRAINT "avaliacao_comite_ibfk_4";
+
+ALTER TABLE "public"."avaliacao_tecnica" ADD CONSTRAINT "avaliacao_tecnica_ibfk_1" FOREIGN KEY ("solicitacao_id") REFERENCES "public"."solicitacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."avaliacao_tecnica" VALIDATE CONSTRAINT "avaliacao_tecnica_ibfk_1";
+
+ALTER TABLE "public"."avaliacao_tecnica" ADD CONSTRAINT "avaliacao_tecnica_ibfk_2" FOREIGN KEY ("periodicidade_sugerida_id") REFERENCES "public"."periodicidade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."avaliacao_tecnica" VALIDATE CONSTRAINT "avaliacao_tecnica_ibfk_2";
+
+ALTER TABLE "public"."avaliacao_tecnica" ADD CONSTRAINT "avaliacao_tecnica_ibfk_3" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."avaliacao_tecnica" VALIDATE CONSTRAINT "avaliacao_tecnica_ibfk_3";
+
+ALTER TABLE "public"."avaliacao_tecnica" ADD CONSTRAINT "avaliacao_tecnica_ibfk_4" FOREIGN KEY ("estado_fase_id") REFERENCES "public"."fases_avaliacoes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."avaliacao_tecnica" VALIDATE CONSTRAINT "avaliacao_tecnica_ibfk_4";
+
+ALTER TABLE "public"."banco" ADD CONSTRAINT "banco_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."banco" VALIDATE CONSTRAINT "banco_ibfk_1";
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_ibfk_1" FOREIGN KEY ("tipo_documento_id") REFERENCES "public"."tipo_documento" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."catalogacao" VALIDATE CONSTRAINT "catalogacao_ibfk_1";
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_ibfk_2" FOREIGN KEY ("autor_id") REFERENCES "public"."autor" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."catalogacao" VALIDATE CONSTRAINT "catalogacao_ibfk_2";
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_ibfk_3" FOREIGN KEY ("lingua_id") REFERENCES "public"."lingua" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."catalogacao" VALIDATE CONSTRAINT "catalogacao_ibfk_3";
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_ibfk_4" FOREIGN KEY ("formato_id") REFERENCES "public"."formato" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."catalogacao" VALIDATE CONSTRAINT "catalogacao_ibfk_4";
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_ibfk_5" FOREIGN KEY ("estado_emenda_id") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."catalogacao" VALIDATE CONSTRAINT "catalogacao_ibfk_5";
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_ibfk_6" FOREIGN KEY ("armario_id") REFERENCES "public"."armario" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."catalogacao" VALIDATE CONSTRAINT "catalogacao_ibfk_6";
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_ibfk_7" FOREIGN KEY ("prateleira_id") REFERENCES "public"."prateleira" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."catalogacao" VALIDATE CONSTRAINT "catalogacao_ibfk_7";
+
+ALTER TABLE "public"."catalogacao" ADD CONSTRAINT "catalogacao_ibfk_8" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."catalogacao" VALIDATE CONSTRAINT "catalogacao_ibfk_8";
+
+ALTER TABLE "public"."categoriakit" ADD CONSTRAINT "categoriakit_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."categoriakit" VALIDATE CONSTRAINT "categoriakit_ibfk_1";
+
+ALTER TABLE "public"."contrato" ADD CONSTRAINT "contrato_ibfk_1" FOREIGN KEY ("solicitacao_id") REFERENCES "public"."solicitacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."contrato" VALIDATE CONSTRAINT "contrato_ibfk_1";
+
+ALTER TABLE "public"."contrato" ADD CONSTRAINT "contrato_ibfk_2" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."contrato" VALIDATE CONSTRAINT "contrato_ibfk_2";
+
+ALTER TABLE "public"."credito" ADD CONSTRAINT "credito_ibfk_1" FOREIGN KEY ("codigo_solitacacao_id") REFERENCES "public"."solicitacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."credito" VALIDATE CONSTRAINT "credito_ibfk_1";
+
+ALTER TABLE "public"."credito" ADD CONSTRAINT "credito_ibfk_2" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."credito" VALIDATE CONSTRAINT "credito_ibfk_2";
+
+ALTER TABLE "public"."credito" ADD CONSTRAINT "credito_ibfk_3" FOREIGN KEY ("aprovacao_comite_id") REFERENCES "public"."avaliacao_comite" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."credito" VALIDATE CONSTRAINT "credito_ibfk_3";
+
+ALTER TABLE "public"."desembolso" ADD CONSTRAINT "desembolso_ibfk_1" FOREIGN KEY ("codigo_solitacacao_id") REFERENCES "public"."solicitacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."desembolso" VALIDATE CONSTRAINT "desembolso_ibfk_1";
+
+ALTER TABLE "public"."desembolso" ADD CONSTRAINT "desembolso_ibfk_2" FOREIGN KEY ("tipo_deseembolso_id") REFERENCES "public"."tipo_deseembolso" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."desembolso" VALIDATE CONSTRAINT "desembolso_ibfk_2";
+
+ALTER TABLE "public"."desembolso" ADD CONSTRAINT "desembolso_ibfk_3" FOREIGN KEY ("periodicidade_id") REFERENCES "public"."periodicidade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."desembolso" VALIDATE CONSTRAINT "desembolso_ibfk_3";
+
+ALTER TABLE "public"."desembolso" ADD CONSTRAINT "desembolso_ibfk_4" FOREIGN KEY ("banco_destino_id") REFERENCES "public"."banco" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."desembolso" VALIDATE CONSTRAINT "desembolso_ibfk_4";
+
+ALTER TABLE "public"."desembolso" ADD CONSTRAINT "desembolso_ibfk_5" FOREIGN KEY ("estado_id") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."desembolso" VALIDATE CONSTRAINT "desembolso_ibfk_5";
+
+ALTER TABLE "public"."detalhes_requerente" ADD CONSTRAINT "detalhes_requerente_ibfk_1" FOREIGN KEY ("requerente_id") REFERENCES "public"."requerente" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."detalhes_requerente" VALIDATE CONSTRAINT "detalhes_requerente_ibfk_1";
+
+ALTER TABLE "public"."distrito" ADD CONSTRAINT "distrito_ibfk_1" FOREIGN KEY ("provincia_id") REFERENCES "public"."provincia" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."distrito" VALIDATE CONSTRAINT "distrito_ibfk_1";
+
+ALTER TABLE "public"."email_logs" ADD CONSTRAINT "email_logs_ibfk_1" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."email_logs" VALIDATE CONSTRAINT "email_logs_ibfk_1";
+
+ALTER TABLE "public"."emprestimo" ADD CONSTRAINT "emprestimo_ibfk_1" FOREIGN KEY ("catalogacao_id") REFERENCES "public"."catalogacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."emprestimo" VALIDATE CONSTRAINT "emprestimo_ibfk_1";
+
+ALTER TABLE "public"."emprestimo" ADD CONSTRAINT "emprestimo_ibfk_2" FOREIGN KEY ("funcionario_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."emprestimo" VALIDATE CONSTRAINT "emprestimo_ibfk_2";
+
+ALTER TABLE "public"."emprestimo" ADD CONSTRAINT "emprestimo_ibfk_3" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."emprestimo" VALIDATE CONSTRAINT "emprestimo_ibfk_3";
+
+ALTER TABLE "public"."entidade" ADD CONSTRAINT "entidade_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."entidade" VALIDATE CONSTRAINT "entidade_ibfk_1";
+
+ALTER TABLE "public"."equipamento" ADD CONSTRAINT "equipamento_ibfk_1" FOREIGN KEY ("tipo_equipamento_id") REFERENCES "public"."tipo_equipamento" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."equipamento" VALIDATE CONSTRAINT "equipamento_ibfk_1";
+
+ALTER TABLE "public"."equipamento" ADD CONSTRAINT "equipamento_ibfk_2" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."equipamento" VALIDATE CONSTRAINT "equipamento_ibfk_2";
+
+ALTER TABLE "public"."equipamento_solicitacao" ADD CONSTRAINT "equipamento_solicitacao_ibfk_1" FOREIGN KEY ("equipamento_id") REFERENCES "public"."equipamento" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."equipamento_solicitacao" VALIDATE CONSTRAINT "equipamento_solicitacao_ibfk_1";
+
+ALTER TABLE "public"."equipamento_solicitacao" ADD CONSTRAINT "equipamento_solicitacao_ibfk_2" FOREIGN KEY ("solicitacao_id") REFERENCES "public"."solicitacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."equipamento_solicitacao" VALIDATE CONSTRAINT "equipamento_solicitacao_ibfk_2";
+
+ALTER TABLE "public"."equipamento_solicitacao" ADD CONSTRAINT "equipamento_solicitacao_ibfk_3" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."equipamento_solicitacao" VALIDATE CONSTRAINT "equipamento_solicitacao_ibfk_3";
+
+ALTER TABLE "public"."error_logs" ADD CONSTRAINT "error_logs_ibfk_1" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."error_logs" VALIDATE CONSTRAINT "error_logs_ibfk_1";
+
+ALTER TABLE "public"."error_logs" ADD CONSTRAINT "error_logs_ibfk_2" FOREIGN KEY ("requerente_id") REFERENCES "public"."requerente" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."error_logs" VALIDATE CONSTRAINT "error_logs_ibfk_2";
+
+ALTER TABLE "public"."estado_civil" ADD CONSTRAINT "estado_civil_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."estado_civil" VALIDATE CONSTRAINT "estado_civil_ibfk_1";
+
+ALTER TABLE "public"."extencionista" ADD CONSTRAINT "extencionista_ibfk_1" FOREIGN KEY ("provincia_id") REFERENCES "public"."provincia" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."extencionista" VALIDATE CONSTRAINT "extencionista_ibfk_1";
+
+ALTER TABLE "public"."extencionista" ADD CONSTRAINT "extencionista_ibfk_2" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."extencionista" VALIDATE CONSTRAINT "extencionista_ibfk_2";
+
+ALTER TABLE "public"."forma_pagamento" ADD CONSTRAINT "forma_pagamento_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."forma_pagamento" VALIDATE CONSTRAINT "forma_pagamento_ibfk_1";
+
+ALTER TABLE "public"."formato" ADD CONSTRAINT "formato_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."formato" VALIDATE CONSTRAINT "formato_ibfk_1";
+
+ALTER TABLE "public"."formato" ADD CONSTRAINT "formato_ibfk_2" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."formato" VALIDATE CONSTRAINT "formato_ibfk_2";
+
+ALTER TABLE "public"."fornecedor" ADD CONSTRAINT "fornecedor_ibfk_1" FOREIGN KEY ("id_provincia") REFERENCES "public"."provincia" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."fornecedor" VALIDATE CONSTRAINT "fornecedor_ibfk_1";
+
+ALTER TABLE "public"."fornecedor" ADD CONSTRAINT "fornecedor_ibfk_2" FOREIGN KEY ("id_distrito") REFERENCES "public"."distrito" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."fornecedor" VALIDATE CONSTRAINT "fornecedor_ibfk_2";
+
+ALTER TABLE "public"."fornecedor" ADD CONSTRAINT "fornecedor_ibfk_3" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."fornecedor" VALIDATE CONSTRAINT "fornecedor_ibfk_3";
+
+ALTER TABLE "public"."genero" ADD CONSTRAINT "genero_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."genero" VALIDATE CONSTRAINT "genero_ibfk_1";
+
+ALTER TABLE "public"."insumo" ADD CONSTRAINT "insumo_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."insumo" VALIDATE CONSTRAINT "insumo_ibfk_1";
+
+ALTER TABLE "public"."insumokit" ADD CONSTRAINT "insumokit_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."insumokit" VALIDATE CONSTRAINT "insumokit_ibfk_1";
+
+ALTER TABLE "public"."insumokit" ADD CONSTRAINT "insumokit_ibfk_2" FOREIGN KEY ("insumo_id") REFERENCES "public"."insumo" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."insumokit" VALIDATE CONSTRAINT "insumokit_ibfk_2";
+
+ALTER TABLE "public"."insumokit" ADD CONSTRAINT "insumokit_ibfk_3" FOREIGN KEY ("kit_id") REFERENCES "public"."categoriakit" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."insumokit" VALIDATE CONSTRAINT "insumokit_ibfk_3";
+
+ALTER TABLE "public"."lingua" ADD CONSTRAINT "lingua_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."lingua" VALIDATE CONSTRAINT "lingua_ibfk_1";
+
+ALTER TABLE "public"."lingua" ADD CONSTRAINT "lingua_ibfk_2" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."lingua" VALIDATE CONSTRAINT "lingua_ibfk_2";
+
+ALTER TABLE "public"."linha_financiamento" ADD CONSTRAINT "linha_financiamento_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."linha_financiamento" VALIDATE CONSTRAINT "linha_financiamento_ibfk_1";
+
+ALTER TABLE "public"."local_entrada" ADD CONSTRAINT "local_entrada_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."local_entrada" VALIDATE CONSTRAINT "local_entrada_ibfk_1";
+
+ALTER TABLE "public"."localidade" ADD CONSTRAINT "localidade_ibfk_1" FOREIGN KEY ("posto_adminstrativo_id") REFERENCES "public"."posto_adminstrativo" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."localidade" VALIDATE CONSTRAINT "localidade_ibfk_1";
+
+ALTER TABLE "public"."nivel_representacao" ADD CONSTRAINT "nivel_representacao_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."nivel_representacao" VALIDATE CONSTRAINT "nivel_representacao_ibfk_1";
+
+ALTER TABLE "public"."pacote_solicitacao" ADD CONSTRAINT "pacote_solicitacao_ibfk_1" FOREIGN KEY ("insumo_id") REFERENCES "public"."insumo" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."pacote_solicitacao" VALIDATE CONSTRAINT "pacote_solicitacao_ibfk_1";
+
+ALTER TABLE "public"."pacote_solicitacao" ADD CONSTRAINT "pacote_solicitacao_ibfk_2" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."pacote_solicitacao" VALIDATE CONSTRAINT "pacote_solicitacao_ibfk_2";
+
+ALTER TABLE "public"."pacote_solicitacao" ADD CONSTRAINT "pacote_solicitacao_ibfk_3" FOREIGN KEY ("solicitacao_id") REFERENCES "public"."solicitacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."pacote_solicitacao" VALIDATE CONSTRAINT "pacote_solicitacao_ibfk_3";
+
+ALTER TABLE "public"."pagamentos" ADD CONSTRAINT "pagamentos_ibfk_1" FOREIGN KEY ("forma_pagamento_id") REFERENCES "public"."forma_pagamento" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."pagamentos" VALIDATE CONSTRAINT "pagamentos_ibfk_1";
+
+ALTER TABLE "public"."pagamentos" ADD CONSTRAINT "pagamentos_ibfk_2" FOREIGN KEY ("prestacao_id") REFERENCES "public"."prestacoes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."pagamentos" VALIDATE CONSTRAINT "pagamentos_ibfk_2";
+
+ALTER TABLE "public"."pagamentos" ADD CONSTRAINT "pagamentos_ibfk_3" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."pagamentos" VALIDATE CONSTRAINT "pagamentos_ibfk_3";
+
+ALTER TABLE "public"."pagamentos" ADD CONSTRAINT "pagamentos_ibfk_4" FOREIGN KEY ("banco_destino_id") REFERENCES "public"."banco" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."pagamentos" VALIDATE CONSTRAINT "pagamentos_ibfk_4";
+
+ALTER TABLE "public"."pagamentos" ADD CONSTRAINT "pagamentos_ibfk_5" FOREIGN KEY ("pagamento_estado_id") REFERENCES "public"."pagamento_estado" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."pagamentos" VALIDATE CONSTRAINT "pagamentos_ibfk_5";
+
+ALTER TABLE "public"."periodicidade" ADD CONSTRAINT "periodicidade_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."periodicidade" VALIDATE CONSTRAINT "periodicidade_ibfk_1";
+
+ALTER TABLE "public"."posicao" ADD CONSTRAINT "posicao_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."posicao" VALIDATE CONSTRAINT "posicao_ibfk_1";
+
+ALTER TABLE "public"."posto_adminstrativo" ADD CONSTRAINT "posto_adminstrativo_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."posto_adminstrativo" VALIDATE CONSTRAINT "posto_adminstrativo_ibfk_1";
+
+ALTER TABLE "public"."posto_adminstrativo" ADD CONSTRAINT "posto_adminstrativo_ibfk_2" FOREIGN KEY ("distrito_id") REFERENCES "public"."distrito" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."posto_adminstrativo" VALIDATE CONSTRAINT "posto_adminstrativo_ibfk_2";
+
+ALTER TABLE "public"."prateleira" ADD CONSTRAINT "prateleira_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."prateleira" VALIDATE CONSTRAINT "prateleira_ibfk_1";
+
+ALTER TABLE "public"."prateleira" ADD CONSTRAINT "prateleira_ibfk_2" FOREIGN KEY ("user_id") REFERENCES "public"."users" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."prateleira" VALIDATE CONSTRAINT "prateleira_ibfk_2";
+
+ALTER TABLE "public"."prestacoes" ADD CONSTRAINT "prestacoes_ibfk_1" FOREIGN KEY ("pagamento_estado_id") REFERENCES "public"."pagamento_estado" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."prestacoes" VALIDATE CONSTRAINT "prestacoes_ibfk_1";
+
+ALTER TABLE "public"."prestacoes" ADD CONSTRAINT "prestacoes_ibfk_2" FOREIGN KEY ("periodicidade") REFERENCES "public"."periodicidade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."prestacoes" VALIDATE CONSTRAINT "prestacoes_ibfk_2";
+
+ALTER TABLE "public"."prestacoes" ADD CONSTRAINT "prestacoes_ibfk_3" FOREIGN KEY ("credito_id") REFERENCES "public"."credito" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."prestacoes" VALIDATE CONSTRAINT "prestacoes_ibfk_3";
+
+ALTER TABLE "public"."prestacoes" ADD CONSTRAINT "prestacoes_ibfk_4" FOREIGN KEY ("solicitacao_id") REFERENCES "public"."solicitacao" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."prestacoes" VALIDATE CONSTRAINT "prestacoes_ibfk_4";
+
+ALTER TABLE "public"."prestacoes" ADD CONSTRAINT "prestacoes_ibfk_5" FOREIGN KEY ("estado_id") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."prestacoes" VALIDATE CONSTRAINT "prestacoes_ibfk_5";
+
+ALTER TABLE "public"."privilegio_perfil" ADD CONSTRAINT "privilegio_perfil_ibfk_1" FOREIGN KEY ("tipo_usuario_id") REFERENCES "public"."tipo_usuario" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."privilegio_perfil" VALIDATE CONSTRAINT "privilegio_perfil_ibfk_1";
+
+ALTER TABLE "public"."processo" ADD CONSTRAINT "processo_ibfk_1" FOREIGN KEY ("user_requerente_id") REFERENCES "public"."user_requerente" ("id") ON UPDATE CASCADE ON DELETE CASCADE NOT VALID;
+
+ALTER TABLE "public"."processo" VALIDATE CONSTRAINT "processo_ibfk_1";
+
+ALTER TABLE "public"."requerente" ADD CONSTRAINT "fk_requerente_distrito" FOREIGN KEY ("id_distrito") REFERENCES "public"."distrito" ("id") ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
+
+ALTER TABLE "public"."requerente" VALIDATE CONSTRAINT "fk_requerente_distrito";
+
+ALTER TABLE "public"."requerente" ADD CONSTRAINT "fk_requerente_posto" FOREIGN KEY ("id_posto") REFERENCES "public"."posto_adminstrativo" ("id") ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
+
+ALTER TABLE "public"."requerente" VALIDATE CONSTRAINT "fk_requerente_posto";
+
+ALTER TABLE "public"."requerente" ADD CONSTRAINT "fk_requerente_provincia" FOREIGN KEY ("id_provincia") REFERENCES "public"."provincia" ("id") ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
+
+ALTER TABLE "public"."requerente" VALIDATE CONSTRAINT "fk_requerente_provincia";
+
+ALTER TABLE "public"."responsavel" ADD CONSTRAINT "responsavel_ibfk_1" FOREIGN KEY ("tipo_entidade_id") REFERENCES "public"."tipo_entidade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."responsavel" VALIDATE CONSTRAINT "responsavel_ibfk_1";
+
+ALTER TABLE "public"."responsavel" ADD CONSTRAINT "responsavel_ibfk_2" FOREIGN KEY ("tipo_documento_id") REFERENCES "public"."tipo_documento" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."responsavel" VALIDATE CONSTRAINT "responsavel_ibfk_2";
+
+ALTER TABLE "public"."responsavel" ADD CONSTRAINT "responsavel_ibfk_3" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."responsavel" VALIDATE CONSTRAINT "responsavel_ibfk_3";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_1" FOREIGN KEY ("periodicidade_id") REFERENCES "public"."periodicidade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_1";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_10" FOREIGN KEY ("estado_fase_id") REFERENCES "public"."fases_avaliacoes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_10";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_2" FOREIGN KEY ("tipo_financiamento_id") REFERENCES "public"."tipo_financiamento" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_2";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_3" FOREIGN KEY ("finalidade_id") REFERENCES "public"."finalidade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_3";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_4" FOREIGN KEY ("linha_financiamento_id") REFERENCES "public"."linha_financiamento" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_4";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_5" FOREIGN KEY ("tipo_actividade_id") REFERENCES "public"."tipo_actividade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_5";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_6" FOREIGN KEY ("responsavel_id") REFERENCES "public"."responsavel" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_6";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_7" FOREIGN KEY ("entidade_id") REFERENCES "public"."entidade" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_7";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_8" FOREIGN KEY ("categoria_kit_id") REFERENCES "public"."categoriakit" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_8";
+
+ALTER TABLE "public"."solicitacao" ADD CONSTRAINT "solicitacao_ibfk_9" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."solicitacao" VALIDATE CONSTRAINT "solicitacao_ibfk_9";
+
+ALTER TABLE "public"."tipo_actividade" ADD CONSTRAINT "tipo_actividade_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."tipo_actividade" VALIDATE CONSTRAINT "tipo_actividade_ibfk_1";
+
+ALTER TABLE "public"."tipo_anexo" ADD CONSTRAINT "tipo_anexo_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."tipo_anexo" VALIDATE CONSTRAINT "tipo_anexo_ibfk_1";
+
+ALTER TABLE "public"."tipo_deseembolso" ADD CONSTRAINT "tipo_deseembolso_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."tipo_deseembolso" VALIDATE CONSTRAINT "tipo_deseembolso_ibfk_1";
+
+ALTER TABLE "public"."tipo_equipamento" ADD CONSTRAINT "tipo_equipamento_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."tipo_equipamento" VALIDATE CONSTRAINT "tipo_equipamento_ibfk_1";
+
+ALTER TABLE "public"."tipo_financiamento" ADD CONSTRAINT "tipo_financiamento_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."tipo_financiamento" VALIDATE CONSTRAINT "tipo_financiamento_ibfk_1";
+
+ALTER TABLE "public"."tipo_garantia" ADD CONSTRAINT "tipo_garantia_ibfk_1" FOREIGN KEY ("estado") REFERENCES "public"."estados" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION NOT VALID;
+
+ALTER TABLE "public"."tipo_garantia" VALIDATE CONSTRAINT "tipo_garantia_ibfk_1";
+
+CREATE OR REPLACE FUNCTION "public"."trg_requerente_obrigatorio_insert_fn"() RETURNS trigger LANGUAGE plpgsql AS $migr$
+DECLARE
+  em_falta varchar(40) := NULL;
+  mensagem varchar(128);
+BEGIN
+  IF NULLIF(TRIM(new.nome), '') IS NULL THEN
+    em_falta := 'nome';
+  ELSIF new.tipo_entidade_id = 1 AND NULLIF(TRIM(new.apelido), '') IS NULL THEN
+    em_falta := 'apelido';
+  ELSIF new.tipo_entidade_id = 1 AND NULLIF(TRIM(new.genero), '') IS NULL THEN
+    em_falta := 'género';
+  ELSIF new.tipo_entidade_id = 1 AND new.data_nascimento IS NULL THEN
+    em_falta := 'data de nascimento';
+  ELSIF new.telefone1 IS NULL THEN
+    em_falta := 'telefone 1';
+  ELSIF new.tipo_documento_id IS NULL THEN
+    em_falta := 'tipo de documento';
+  ELSIF NULLIF(TRIM(new.numero_documento), '') IS NULL THEN
+    em_falta := 'número do documento';
+  ELSIF new.nuit IS NULL THEN
+    em_falta := 'NUIT';
+  ELSIF NULLIF(TRIM(new.endereco), '') IS NULL THEN
+    em_falta := 'endereço';
+  ELSIF NULLIF(TRIM(new.email), '') IS NULL THEN
+    em_falta := 'email';
+  ELSIF new.id_provincia IS NULL THEN
+    em_falta := 'província';
+  ELSIF new.id_distrito IS NULL THEN
+    em_falta := 'distrito';
+  ELSIF new.id_posto IS NULL AND EXISTS(SELECT 1 FROM posto_adminstrativo WHERE distrito_id = new.id_distrito AND estado = 1) THEN
+    em_falta := 'posto administrativo';
+  ELSIF NULLIF(TRIM(new.localidade), '') IS NULL THEN
+    em_falta := 'localidade';
+  ELSIF NULLIF(TRIM(new.bairro), '') IS NULL THEN
+    em_falta := 'bairro';
+  END IF;
+  IF NOT em_falta IS NULL THEN
+    mensagem := 'Preencha o campo obrigatório: ' || em_falta || '.';
+    RAISE EXCEPTION USING ERRCODE = '45000', MESSAGE = mensagem;
+  END IF;
+  RETURN NEW;
+END
+$migr$;
+
+CREATE TRIGGER "trg_requerente_obrigatorio_insert" BEFORE INSERT ON "public"."requerente" FOR EACH ROW EXECUTE FUNCTION "public"."trg_requerente_obrigatorio_insert_fn"();
+
+CREATE OR REPLACE FUNCTION "public"."trg_requerente_obrigatorio_update_fn"() RETURNS trigger LANGUAGE plpgsql AS $migr$
+DECLARE
+  em_falta varchar(40) := NULL;
+  mensagem varchar(128);
+  passou_a_singular boolean := (new.tipo_entidade_id = 1 AND NOT (old.tipo_entidade_id IS NOT DISTINCT FROM 1));
+BEGIN
+  IF NULLIF(TRIM(new.nome), '') IS NULL AND NOT NULLIF(TRIM(old.nome), '') IS NULL THEN
+    em_falta := 'nome';
+  ELSIF new.tipo_entidade_id = 1 AND NULLIF(TRIM(new.apelido), '') IS NULL AND (passou_a_singular OR NOT NULLIF(TRIM(old.apelido), '') IS NULL) THEN
+    em_falta := 'apelido';
+  ELSIF new.tipo_entidade_id = 1 AND NULLIF(TRIM(new.genero), '') IS NULL AND (passou_a_singular OR NOT NULLIF(TRIM(old.genero), '') IS NULL) THEN
+    em_falta := 'género';
+  ELSIF new.tipo_entidade_id = 1 AND new.data_nascimento IS NULL AND (passou_a_singular OR NOT old.data_nascimento IS NULL) THEN
+    em_falta := 'data de nascimento';
+  ELSIF new.telefone1 IS NULL AND NOT old.telefone1 IS NULL THEN
+    em_falta := 'telefone 1';
+  ELSIF new.tipo_documento_id IS NULL AND NOT old.tipo_documento_id IS NULL THEN
+    em_falta := 'tipo de documento';
+  ELSIF NULLIF(TRIM(new.numero_documento), '') IS NULL AND NOT NULLIF(TRIM(old.numero_documento), '') IS NULL THEN
+    em_falta := 'número do documento';
+  ELSIF new.nuit IS NULL AND NOT old.nuit IS NULL THEN
+    em_falta := 'NUIT';
+  ELSIF NULLIF(TRIM(new.endereco), '') IS NULL AND NOT NULLIF(TRIM(old.endereco), '') IS NULL THEN
+    em_falta := 'endereço';
+  ELSIF NULLIF(TRIM(new.email), '') IS NULL AND NOT NULLIF(TRIM(old.email), '') IS NULL THEN
+    em_falta := 'email';
+  ELSIF new.id_provincia IS NULL AND NOT old.id_provincia IS NULL THEN
+    em_falta := 'província';
+  ELSIF new.id_distrito IS NULL AND NOT old.id_distrito IS NULL THEN
+    em_falta := 'distrito';
+  ELSIF new.id_posto IS NULL AND (NOT old.id_posto IS NULL OR NOT (new.id_distrito IS NOT DISTINCT FROM old.id_distrito)) AND EXISTS(SELECT 1 FROM posto_adminstrativo WHERE distrito_id = new.id_distrito AND estado = 1) THEN
+    em_falta := 'posto administrativo';
+  ELSIF NULLIF(TRIM(new.localidade), '') IS NULL AND NOT NULLIF(TRIM(old.localidade), '') IS NULL THEN
+    em_falta := 'localidade';
+  ELSIF NULLIF(TRIM(new.bairro), '') IS NULL AND NOT NULLIF(TRIM(old.bairro), '') IS NULL THEN
+    em_falta := 'bairro';
+  END IF;
+  IF NOT em_falta IS NULL THEN
+    mensagem := 'Preencha o campo obrigatório: ' || em_falta || '.';
+    RAISE EXCEPTION USING ERRCODE = '45000', MESSAGE = mensagem;
+  END IF;
+  RETURN NEW;
+END
+$migr$;
+
+CREATE TRIGGER "trg_requerente_obrigatorio_update" BEFORE UPDATE ON "public"."requerente" FOR EACH ROW EXECUTE FUNCTION "public"."trg_requerente_obrigatorio_update_fn"();
