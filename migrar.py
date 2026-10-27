@@ -56,7 +56,9 @@ BIGINT_MAX = 9223372036854775807
 # --------------------------------------------------------------------------- #
 # Saída no terminal
 # --------------------------------------------------------------------------- #
-COR = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
+# MIGRAR_TERMINAL=1: a interface web mostra a saída como um terminal (cores e progresso).
+TERMINAL = sys.stdout.isatty() or os.environ.get("MIGRAR_TERMINAL") == "1"
+COR = TERMINAL and os.environ.get("NO_COLOR") is None
 _CORES = {"ERRO": "31", "AVISO": "33", "INFO": "36", "OK": "32", "TITULO": "1"}
 
 
@@ -64,9 +66,23 @@ def cor(texto: str, tipo: str) -> str:
     return f"\033[{_CORES[tipo]}m{texto}\033[0m" if COR else texto
 
 
+_progresso_ativo = False
+
+
 def progresso(texto: str) -> None:
-    if sys.stdout.isatty():
-        print(f"\r{texto}", end="", flush=True)
+    """Escreve uma linha de progresso que a próxima substitui (só num terminal)."""
+    global _progresso_ativo
+    if TERMINAL:
+        print(f"\r\033[K{texto}", end="", flush=True)
+        _progresso_ativo = True
+
+
+def limpar_progresso() -> None:
+    """Apaga a linha de progresso, para o texto seguinte não ficar colado a ela."""
+    global _progresso_ativo
+    if _progresso_ativo:
+        print("\r\033[K", end="", flush=True)
+        _progresso_ativo = False
 
 
 def titulo(texto: str) -> None:
@@ -762,7 +778,7 @@ def validar(esq: EsquemaMySQL, con_my, con_pg, args, rel: Relatorio, plan: Plane
     for i, t in enumerate(esq.tabelas.values(), 1):
         progresso(f"  A analisar dados: {i}/{len(esq.tabelas)} {t.nome[:40]:<40}")
         ests[t.nome] = estatisticas_tabela(con_my, t, not args.sem_booleanos)
-    progresso(" " * 70 + "\r")
+    limpar_progresso()
     plan.planear(esq, ests)
     if plan.colunas_ci:
         rel.add(fase, "INFO", "Texto sem distinguir maiúsculas (como no MySQL)", f"{plan.colunas_ci} colunas",
@@ -1191,10 +1207,12 @@ class Migrador:
                         total = max(t.linhas_estimadas, linhas)
                         progresso(f"  {t.nome[:40]:<40} {linhas:>10}/{total}")
             estado = "ok"
+            limpar_progresso()
             print(f"  {t.nome[:40]:<40} {linhas:>10} linhas  {cor('ok', 'OK')} ({time.time() - inicio:.1f}s)")
         except (psycopg.Error, pymysql.Error) as e:
             estado = "erro"
             msg = str(e).strip().splitlines()[0]
+            limpar_progresso()
             print(f"  {t.nome[:40]:<40} {cor('ERRO', 'ERRO')}: {msg}")
             self.rel.add("migracao", "ERRO", "Falha ao copiar dados", t.nome, msg)
         finally:
@@ -1839,6 +1857,7 @@ class Verificador:
             extra = "" if self.args.sem_comparar_linhas else f"  {res.get('iguais', 0)} linhas iguais"
             if res.get("criados"):
                 extra += f" (+{res['criados']} criada(s) para FKs)"
+            limpar_progresso()
             print(f"  {t.nome[:40]:<40} {res['linhas_mysql']:>8} → {res['linhas_pg']:<8} {estado}{extra}")
         self.verificar_fks_e_indices()
         self.verificar_objetos()

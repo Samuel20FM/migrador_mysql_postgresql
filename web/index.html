@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migrador MySQL → PostgreSQL</title>
+<style>
+  :root {
+    --fundo: #e9edf1;
+    --painel: #f7f9fa;
+    --tinta: #1d2a36;
+    --suave: #5b6a78;
+    --linha: #c9d2da;
+    --mysql: #a8670f;
+    --mysql-fundo: #f6ecdc;
+    --pg: #2c5d8c;
+    --pg-fundo: #e0eaf3;
+    --acao: #1f4f7a;
+    --acao-texto: #ffffff;
+    --term: #16212c;
+    --term-barra: #1f2d3a;
+    --term-texto: #d3dde6;
+    --t-ok: #84c9a4;
+    --t-aviso: #e6bc62;
+    --t-erro: #ee7b72;
+    --t-info: #7fbadb;
+    --sans: "Inter", "Segoe UI", "Noto Sans", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --fundo: #121a22; --painel: #1a2530; --tinta: #e1e8ee; --suave: #93a3b1; --linha: #2e3d4b;
+      --mysql: #e3a447; --mysql-fundo: #2c2416; --pg: #8ab6e0; --pg-fundo: #1b2a3a;
+      --acao: #8ab6e0; --acao-texto: #0f1922; --term: #0d151c; --term-barra: #17222d;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--fundo); color: var(--tinta); font: 15px/1.5 var(--sans);
+    min-height: 100vh;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--pg); outline-offset: 2px; }
+
+  .pagina {
+    display: grid; gap: 28px; max-width: 1440px; margin: 0 auto; padding: 24px 24px 32px;
+    grid-template-columns: minmax(340px, 470px) minmax(0, 1fr);
+    grid-template-areas: "rota rota" "form term";
+  }
+
+  /* Rota: o elemento que dá identidade à página */
+  .rota { grid-area: rota; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .rota .ponta { display: flex; flex-direction: column; min-width: 0; }
+  .rota .motor { font-size: 13px; color: var(--suave); }
+  .rota .base {
+    font: 600 clamp(22px, 3vw, 34px)/1.15 var(--mono); letter-spacing: -0.02em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34vw;
+  }
+  .rota .origem .base { color: var(--mysql); }
+  .rota .destino .base { color: var(--pg); }
+  .rota .base.vazia { color: var(--linha); }
+  .tubo {
+    flex: 1 1 80px; min-width: 60px; height: 4px; border-radius: 2px; position: relative;
+    background: linear-gradient(90deg, var(--mysql), var(--pg)); opacity: .35;
+  }
+  .tubo::after {
+    content: ""; position: absolute; right: -2px; top: -5px;
+    border-left: 10px solid var(--pg); border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+  }
+  .a-correr .tubo { opacity: 1; background-size: 200% 100%;
+    background-image: repeating-linear-gradient(90deg, var(--mysql) 0 18px, var(--pg) 18px 36px);
+    animation: fluxo 1s linear infinite; }
+  @keyframes fluxo { to { background-position: 36px 0; } }
+  @media (prefers-reduced-motion: reduce) { .a-correr .tubo { animation: none; } }
+
+  /* Formulário */
+  form { grid-area: form; display: flex; flex-direction: column; gap: 18px; }
+  fieldset { margin: 0; border: 1px solid var(--linha); border-radius: 10px; padding: 14px 16px 16px;
+             background: var(--painel); }
+  fieldset.lado-origem { border-left: 4px solid var(--mysql); }
+  fieldset.lado-destino { border-left: 4px solid var(--pg); }
+  legend { padding: 0 6px; font-weight: 600; }
+  .grade { display: grid; grid-template-columns: 1fr 92px; gap: 10px 12px; }
+  .grade .largo { grid-column: 1 / -1; }
+  label { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--suave); }
+  input[type=text], input[type=password], input[type=number], select {
+    border: 1px solid var(--linha); border-radius: 6px; padding: 7px 9px; background: var(--fundo);
+    color: var(--tinta); font-size: 14px; min-width: 0;
+  }
+  input:focus, select:focus { border-color: var(--pg); }
+  .testar { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .resposta { font-size: 13px; color: var(--suave); }
+  .resposta.ok { color: #2f7d55; } .resposta.erro { color: #b8433a; }
+  @media (prefers-color-scheme: dark) { .resposta.ok { color: var(--t-ok); } .resposta.erro { color: var(--t-erro); } }
+
+  .botao { border: 1px solid var(--linha); background: transparent; border-radius: 6px; padding: 6px 12px;
+           cursor: pointer; font-size: 14px; }
+  .botao:hover { border-color: var(--suave); }
+  .botao:disabled { opacity: .5; cursor: not-allowed; }
+
+  .modos { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--linha);
+           border-radius: 8px; overflow: hidden; background: var(--painel); }
+  .modos input { position: absolute; opacity: 0; pointer-events: none; }
+  .modos label { color: var(--tinta); font-size: 14px; text-align: center; padding: 9px 4px; cursor: pointer;
+                 border-left: 1px solid var(--linha); }
+  .modos label:first-of-type { border-left: 0; }
+  .modos input:checked + label { background: var(--acao); color: var(--acao-texto); font-weight: 600; }
+  .modos input:focus-visible + label { outline: 2px solid var(--pg); outline-offset: -3px; }
+  .explica-modo { font-size: 13px; color: var(--suave); margin: -8px 0 0; min-height: 2.6em; }
+
+  .marcar { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; color: var(--tinta); font-size: 14px; }
+  .marcar input { margin-top: 4px; accent-color: var(--acao); }
+  .marcar small { display: block; color: var(--suave); font-size: 12.5px; }
+  .opcoes { display: flex; flex-direction: column; gap: 10px; }
+  details summary { cursor: pointer; font-weight: 600; }
+  details[open] summary { margin-bottom: 12px; }
+
+  .executar { border: 0; border-radius: 8px; padding: 12px 18px; background: var(--acao); color: var(--acao-texto);
+              font-weight: 600; font-size: 16px; cursor: pointer; }
+  .executar:disabled { opacity: .55; cursor: not-allowed; }
+
+  /* Terminal */
+  .terminal { grid-area: term; display: flex; flex-direction: column; min-height: 420px;
+              height: calc(100vh - 150px); position: sticky; top: 20px;
+              background: var(--term); border-radius: 10px; overflow: hidden;
+              box-shadow: 0 10px 30px -18px rgba(10, 25, 40, .7); }
+  .barra { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--term-barra);
+           color: var(--term-texto); font-size: 13px; }
+  .luz { width: 9px; height: 9px; border-radius: 50%; background: #5d6c79; flex: none; }
+  .luz.correr { background: var(--t-info); box-shadow: 0 0 0 3px rgba(127,186,219,.2); }
+  .luz.ok { background: var(--t-ok); } .luz.erro { background: var(--t-erro); } .luz.aviso { background: var(--t-aviso); }
+  .barra .estado { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barra button { border: 1px solid #3a4b5b; background: transparent; color: var(--term-texto); border-radius: 5px;
+                  padding: 3px 10px; cursor: pointer; font-size: 13px; }
+  .barra button:hover:not(:disabled) { border-color: #6c8092; }
+  .barra button:disabled { opacity: .4; cursor: not-allowed; }
+  .saida { flex: 1; overflow: auto; margin: 0; padding: 12px 14px 16px; color: var(--term-texto);
+           font: 13px/1.45 var(--mono); white-space: pre; tab-size: 4; }
+  .saida .vazio { color: #6f8191; white-space: normal; font-family: var(--sans); font-size: 14px; }
+  .c31 { color: var(--t-erro); } .c32 { color: var(--t-ok); } .c33 { color: var(--t-aviso); }
+  .c36 { color: var(--t-info); } .c1 { font-weight: 700; color: #ffffff; }
+  .rodape { border-top: 1px solid #263644; padding: 10px 14px; color: var(--term-texto); font-size: 13px;
+            display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .rodape a { color: var(--t-info); }
+  .rodape select { background: var(--term-barra); color: var(--term-texto); border-color: #3a4b5b; padding: 3px 6px; }
+  .rodape .fim-ok { color: var(--t-ok); font-weight: 600; } .rodape .fim-erro { color: var(--t-erro); font-weight: 600; }
+
+  .aviso-token { grid-column: 1 / -1; background: var(--mysql-fundo); border: 1px solid var(--mysql); border-radius: 8px;
+                 padding: 12px 16px; }
+
+  @media (max-width: 900px) {
+    .pagina { grid-template-columns: 1fr; grid-template-areas: "rota" "form" "term"; padding: 16px; gap: 20px; }
+    .terminal { position: static; height: 70vh; }
+    .rota .base { max-width: 80vw; }
+    .tubo { flex-basis: 100%; order: 2; }
+    .rota .destino { order: 3; }
+  }
+</style>
+</head>
+<body>
+<main class="pagina" id="pagina">
+  <header class="rota" aria-label="Rota da migração">
+    <div class="ponta origem"><span class="motor">MySQL</span><span class="base vazia" id="rota-origem">origem</span></div>
+    <div class="tubo" aria-hidden="true"></div>
+    <div class="ponta destino"><span class="motor">PostgreSQL</span><span class="base vazia" id="rota-destino">destino</span></div>
+  </header>
+
+  <div class="aviso-token" id="aviso-token" hidden>
+    Esta página precisa do link com o token que aparece no terminal quando corre
+    <code>python interface.py</code>. Abra esse link.
+  </div>
+
+  <form id="form" autocomplete="off">
+    <fieldset class="lado-origem" data-lado="origem">
+      <legend>Origem · MySQL</legend>
+      <div class="grade">
+        <label>Servidor<input type="text" name="host" value="127.0.0.1" required></label>
+        <label>Porta<input type="number" name="porta" value="3306" min="1" max="65535"></label>
+        <label>Utilizador<input type="text" name="utilizador" required></label>
+        <label>Senha<input type="password" name="senha" autocomplete="new-password"></label>
+        <label class="largo">Base de dados<input type="text" name="base" list="bases-origem" required></label>
+      </div>
+      <datalist id="bases-origem"></datalist>
+      <div class="testar"><button type="button" class="botao" data-testar="origem">Testar ligação</button>
+        <span class="resposta" aria-live="polite"></span></div>
+    </fieldset>
+
+    <fieldset class="lado-destino" data-lado="destino">
+      <legend>Destino · PostgreSQL</legend>
+      <div class="grade">
+        <label>Servidor<input type="text" name="host" value="127.0.0.1" required></label>
+        <label>Porta<input type="number" name="porta" value="5432" min="1" max="65535"></label>
+        <label>Utilizador<input type="text" name="utilizador" required></label>
+        <label>Senha<input type="password" name="senha" autocomplete="new-password"></label>
+        <label>Base de dados<input type="text" name="base" list="bases-destino" required></label>
+        <label>Esquema<input type="text" name="esquema" value="public" data-opcao></label>
+      </div>
+      <datalist id="bases-destino"></datalist>
+      <div class="testar"><button type="button" class="botao" data-testar="destino">Testar ligação</button>
+        <span class="resposta" aria-live="polite"></span></div>
+    </fieldset>
+
+    <div class="modos" role="radiogroup" aria-label="O que fazer">
+      <input type="radio" name="modo" id="m-validar" value="validar"><label for="m-validar">Validar</label>
+      <input type="radio" name="modo" id="m-migrar" value="migrar"><label for="m-migrar">Migrar</label>
+      <input type="radio" name="modo" id="m-verificar" value="verificar"><label for="m-verificar">Verificar</label>
+      <input type="radio" name="modo" id="m-tudo" value="tudo" checked><label for="m-tudo">Tudo</label>
+    </div>
+    <p class="explica-modo" id="explica-modo"></p>
+
+    <div class="opcoes">
+      <label class="marcar"><input type="checkbox" data-opcao="substituir">
+        <span>Substituir tabelas que já existem no destino<small>Apaga e recria-as. Sem isto, a migração pára se a tabela já existir.</small></span></label>
+      <label class="marcar"><input type="checkbox" data-opcao="forcar">
+        <span>Migrar mesmo com erros na validação</span></label>
+    </div>
+
+    <details>
+      <summary>Opções avançadas</summary>
+      <div class="opcoes">
+        <label>Só estas tabelas (separadas por vírgula)<input type="text" data-opcao="tabelas" placeholder="todas"></label>
+        <label>Ignorar estas tabelas<input type="text" data-opcao="excluir"></label>
+        <label>Registos órfãos (FK a apontar para um pai que não existe)
+          <select data-opcao="orfaos">
+            <option value="criar-pais">Criar o pai em falta e deixar a FK válida</option>
+            <option value="not-valid">Deixar os dados como estão e criar a FK NOT VALID</option>
+          </select></label>
+        <label>Comparação de texto
+          <select data-opcao="comparacao_texto">
+            <option value="mysql">Como no MySQL: ignora maiúsculas e acentos</option>
+            <option value="exata">Exacta: 'Ana' é diferente de 'ana'</option>
+          </select></label>
+        <div class="grade">
+          <label>Linhas lidas de cada vez<input type="number" data-opcao="lote" value="5000" min="1"></label>
+          <label>Exemplos<input type="number" data-opcao="amostras" value="20" min="1" title="Diferenças de exemplo por tabela"></label>
+        </div>
+        <label class="marcar"><input type="checkbox" data-opcao="sem_objetos"><span>Não traduzir triggers, procedures, funções, eventos e views</span></label>
+        <label class="marcar"><input type="checkbox" data-opcao="sem_booleanos"><span>tinyint(1) fica smallint em vez de boolean</span></label>
+        <label class="marcar"><input type="checkbox" data-opcao="enum_sem_check"><span>ENUM sem CHECK com os valores</span></label>
+        <label class="marcar"><input type="checkbox" data-opcao="manter_maiusculas"><span>Manter as maiúsculas nos nomes de tabelas e colunas</span></label>
+        <label class="marcar"><input type="checkbox" data-opcao="sem_comparar_linhas"><span>Na verificação, só contar linhas</span></label>
+      </div>
+    </details>
+
+    <button type="submit" class="executar" id="executar">Executar: tudo</button>
+  </form>
+
+  <section class="terminal" aria-label="Saída do migrador">
+    <div class="barra">
+      <span class="luz" id="luz"></span>
+      <span class="estado" id="estado">Parado</span>
+      <button type="button" id="parar" disabled>Parar</button>
+      <button type="button" id="limpar">Limpar</button>
+    </div>
+    <pre class="saida" id="saida" tabindex="0" aria-live="off"><span class="vazio">A saída do migrador aparece aqui quando carregar em Executar.</span></pre>
+    <div class="rodape" id="rodape">
+      <span id="fim"></span>
+      <span id="links"></span>
+      <label style="flex-direction:row;align-items:center;gap:6px;color:inherit;margin-left:auto">Relatórios anteriores
+        <select id="anteriores"><option value="">—</option></select></label>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const token = new URLSearchParams(location.search).get("t") || "";
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const form = $("#form");
+  const GUARDAR = "migrador.form";
+
+  const MODOS = {
+    validar: "Só analisa as duas bases e lista os problemas. Não escreve nada no PostgreSQL.",
+    migrar: "Valida e copia estrutura e dados para o PostgreSQL.",
+    verificar: "Valida e compara as tabelas que já estão no PostgreSQL com as do MySQL, linha a linha.",
+    tudo: "Valida, migra e compara linha a linha. É o percurso completo.",
+  };
+  const RESULTADOS = {
+    ok: ["Concluído sem diferenças", "ok"],
+    diferencas: ["Concluído com diferenças ou erros", "erro"],
+    parado: ["Parado na validação: veja os erros acima", "aviso"],
+    ligacao: ["Não consegui ligar a uma das bases", "erro"],
+    interrompido: ["Interrompido", "aviso"],
+    erro: ["Terminou com erro", "erro"],
+  };
+
+  if (!token) $("#aviso-token").hidden = false;
+
+  async function api(caminho, corpo) {
+    const r = await fetch(caminho, {
+      method: corpo === undefined ? "GET" : "POST",
+      headers: { "X-Token": token, "Content-Type": "application/json" },
+      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    });
+    const dados = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(dados.erro || `Erro ${r.status}`);
+    return dados;
+  }
+
+  // ---- formulário -------------------------------------------------------
+  const lado = (nome) => {
+    const fs = $(`fieldset[data-lado="${nome}"]`);
+    const v = (n) => $(`[name="${n}"]`, fs).value.trim();
+    return { host: v("host"), porta: Number(v("porta")) || undefined, utilizador: v("utilizador"),
+             senha: $(`[name="senha"]`, fs).value, base: v("base") };
+  };
+  const modo = () => $('input[name="modo"]:checked').value;
+  function opcoes() {
+    const o = {};
+    for (const el of $$("[data-opcao]")) {
+      const k = el.dataset.opcao || el.name;
+      o[k] = el.type === "checkbox" ? el.checked : el.value.trim();
+    }
+    return o;
+  }
+
+  // Guarda tudo menos as senhas, para não ter de escrever de novo.
+  function guardar() {
+    const dados = { modo: modo(), opcoes: opcoes(), origem: lado("origem"), destino: lado("destino") };
+    delete dados.origem.senha; delete dados.destino.senha;
+    try { localStorage.setItem(GUARDAR, JSON.stringify(dados)); } catch (e) {}
+  }
+  function repor() {
+    let d;
+    try { d = JSON.parse(localStorage.getItem(GUARDAR) || "null"); } catch (e) { d = null; }
+    if (!d) return;
+    for (const nome of ["origem", "destino"]) {
+      const fs = $(`fieldset[data-lado="${nome}"]`);
+      for (const [k, v] of Object.entries(d[nome] || {})) {
+        const el = $(`[name="${k}"]`, fs);
+        if (el && v !== undefined && v !== null) el.value = v;
+      }
+    }
+    const m = $(`input[name="modo"][value="${d.modo}"]`); if (m) m.checked = true;
+    for (const el of $$("[data-opcao]")) {
+      const k = el.dataset.opcao || el.name;
+      if (!(k in (d.opcoes || {}))) continue;
+      if (el.type === "checkbox") el.checked = !!d.opcoes[k]; else el.value = d.opcoes[k];
+    }
+  }
+
+  function actualizarRota() {
+    for (const nome of ["origem", "destino"]) {
+      const el = $(`#rota-${nome}`), base = lado(nome).base;
+      el.textContent = base || nome; el.classList.toggle("vazia", !base); el.title = base;
+    }
+    $("#explica-modo").textContent = MODOS[modo()];
+    $("#executar").textContent = `Executar: ${$(`label[for="m-${modo()}"]`).textContent.toLowerCase()}`;
+  }
+  form.addEventListener("input", () => { actualizarRota(); guardar(); });
+  form.addEventListener("change", () => { actualizarRota(); guardar(); });
+
+  for (const b of $$("[data-testar]")) {
+    b.addEventListener("click", async () => {
+      const nome = b.dataset.testar, resp = b.nextElementSibling;
+      resp.className = "resposta"; resp.textContent = "A ligar...";
+      b.disabled = true;
+      try {
+        const r = await api("/api/testar", { lado: nome, dados: lado(nome) });
+        resp.className = "resposta " + (r.ok ? "ok" : "erro");
+        resp.textContent = r.mensagem;
+        if (r.bases) $(`#bases-${nome}`).replaceChildren(...r.bases.map((n) => new Option(n, n)));
+      } catch (e) { resp.className = "resposta erro"; resp.textContent = e.message; }
+      finally { b.disabled = false; }
+    });
+  }
+
+  // ---- terminal ---------------------------------------------------------
+  // Emula o suficiente de um terminal: \n, \r (voltar ao início da linha) e cores ANSI.
+  const saida = $("#saida");
+  const MAX_LINHAS = 8000;
+  let linha = [], coluna = 0, classe = "", linhaEl = null, pendente = "";
+
+  function novaLinhaEl() {
+    linhaEl = document.createElement("span");
+    saida.append(linhaEl);
+  }
+  function desenharLinha() {
+    const frag = document.createDocumentFragment();
+    let atual = null, texto = "";
+    const fechar = () => {
+      if (!texto) return;
+      const s = document.createElement("span");
+      if (atual) s.className = atual;
+      s.textContent = texto; frag.append(s);
+    };
+    for (const c of linha) {
+      if (c.k !== atual) { fechar(); atual = c.k; texto = ""; }
+      texto += c.ch;
+    }
+    fechar();
+    linhaEl.replaceChildren(frag);
+  }
+  function escrever(texto) {
+    const vazio = $(".vazio", saida); if (vazio) { vazio.remove(); }
+    if (!linhaEl) novaLinhaEl();
+    texto = pendente + texto; pendente = "";
+    const perto = saida.scrollHeight - saida.scrollTop - saida.clientHeight < 40;
+    for (let i = 0; i < texto.length; i++) {
+      const ch = texto[i];
+      if (ch === "\x1b") {
+        const m = /^\x1b\[([0-9;]*)([mK])/.exec(texto.slice(i, i + 12));
+        if (!m) { if (texto.length - i < 12) { pendente = texto.slice(i); break; } continue; }
+        if (m[2] === "K") {
+          linha.length = coluna;  // apaga do cursor até ao fim da linha
+        } else {
+          const cod = m[1] || "0";
+          classe = cod === "0" ? "" : cod.split(";").map((c) => "c" + c).join(" ");
+        }
+        i += m[0].length - 1;
+      } else if (ch === "\n") {
+        desenharLinha(); saida.append("\n");
+        linha = []; coluna = 0; novaLinhaEl();
+      } else if (ch === "\r") {
+        coluna = 0;
+      } else {
+        linha[coluna] = { ch, k: classe };
+        coluna++;
+      }
+    }
+    desenharLinha();
+    while (saida.childNodes.length > MAX_LINHAS * 2) { saida.firstChild.remove(); }
+    if (perto) saida.scrollTop = saida.scrollHeight;
+  }
+  function limpar() {
+    saida.replaceChildren(); linha = []; coluna = 0; classe = ""; linhaEl = null; pendente = "";
+  }
+  $("#limpar").addEventListener("click", limpar);
+
+  // ---- execução ---------------------------------------------------------
+  let fonte = null;
+  function estadoVisual(texto, luz, correr) {
+    $("#estado").textContent = texto;
+    $("#luz").className = "luz " + (luz || "");
+    $("#pagina").classList.toggle("a-correr", !!correr);
+    $("#executar").disabled = !!correr;
+    $("#parar").disabled = !correr;
+  }
+
+  function linkRelatorio(nome) {
+    const a = document.createElement("a");
+    a.href = `/relatorio/${encodeURIComponent(nome)}?t=${encodeURIComponent(token)}`;
+    a.target = "_blank"; a.rel = "noopener"; a.textContent = nome;
+    return a;
+  }
+
+  function mostrarFim(est) {
+    const [texto, tipo] = RESULTADOS[est.resultado] || RESULTADOS.erro;
+    estadoVisual(`${texto} · ${est.duracao}s`, tipo, false);
+    const fim = $("#fim");
+    fim.className = tipo === "ok" ? "fim-ok" : "fim-erro";
+    fim.textContent = texto + ".";
+    const links = $("#links"); links.replaceChildren();
+    const rel = (est.relatorios || []).filter((n) => /\.(md|sql|json)$/.test(n));
+    if (rel.length) {
+      links.append("Relatórios: ");
+      rel.forEach((n, i) => { if (i) links.append(" · "); links.append(linkRelatorio(n)); });
+    }
+    carregarAnteriores();
+  }
+
+  function seguir(desde = 0) {
+    if (fonte) fonte.close();
+    fonte = new EventSource(`/api/eventos?t=${encodeURIComponent(token)}&desde=${desde}`);
+    fonte.onmessage = (ev) => escrever(JSON.parse(ev.data));
+    fonte.addEventListener("fim", (ev) => { fonte.close(); fonte = null; mostrarFim(JSON.parse(ev.data)); });
+    fonte.onerror = () => {
+      if (fonte && fonte.readyState === EventSource.CLOSED) estadoVisual("Ligação à interface perdida", "erro", false);
+    };
+  }
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!form.reportValidity()) return;
+    const o = opcoes(), m = modo(), destino = lado("destino");
+    if ((m === "migrar" || m === "tudo")) {
+      let pergunta = `Migrar ${lado("origem").base} para ${destino.base} (esquema ${o.esquema || "public"})?`;
+      if (o.substituir) pergunta += "\n\nAs tabelas que já existirem no destino vão ser apagadas e recriadas.";
+      if (!confirm(pergunta)) return;
+    }
+    limpar(); $("#fim").textContent = ""; $("#links").replaceChildren();
+    try {
+      await api("/api/executar", { modo: m, opcoes: o, origem: lado("origem"), destino });
+    } catch (e) {
+      estadoVisual(e.message, "erro", false); return;
+    }
+    estadoVisual(`A correr: ${$(`label[for="m-${m}"]`).textContent.toLowerCase()}`, "correr", true);
+    seguir(0);
+  });
+
+  $("#parar").addEventListener("click", async () => {
+    try {
+      const r = await api("/api/parar", {});
+      $("#estado").textContent = r.mensagem === "interrompido"
+        ? "A parar (o relatório é gravado)... carregue outra vez para terminar já" : r.mensagem;
+    } catch (e) { $("#estado").textContent = e.message; }
+  });
+
+  async function carregarAnteriores() {
+    if (!token) return;
+    try {
+      const { relatorios } = await api("/api/relatorios");
+      const sel = $("#anteriores");
+      sel.replaceChildren(new Option("—", ""), ...relatorios.map((r) => {
+        const d = new Date(r.data * 1000);
+        return new Option(`${d.toLocaleDateString()} ${d.toLocaleTimeString().slice(0, 5)} · ${r.md}`, r.md);
+      }));
+    } catch (e) {}
+  }
+  $("#anteriores").addEventListener("change", (ev) => {
+    const n = ev.target.value;
+    if (n) window.open(`/relatorio/${encodeURIComponent(n)}?t=${encodeURIComponent(token)}`, "_blank", "noopener");
+    ev.target.value = "";
+  });
+
+  // Ao abrir (ou recarregar) a página: retoma uma execução que esteja a decorrer.
+  async function iniciar() {
+    repor(); actualizarRota(); carregarAnteriores();
+    if (!token) { $("#executar").disabled = true; return; }
+    try {
+      const { execucao } = await api("/api/estado");
+      if (execucao) {
+        if (execucao.a_correr) estadoVisual(`A correr: ${execucao.modo}`, "correr", true);
+        seguir(0);
+      }
+    } catch (e) { estadoVisual(e.message, "erro", false); }
+  }
+  iniciar();
+})();
+</script>
+</body>
+</html>

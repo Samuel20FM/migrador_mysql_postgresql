@@ -41,6 +41,33 @@ Opções úteis: `--substituir` (recria tabelas que já existem), `--tabelas a,b
 
 O utilizador do MySQL só precisa de `SELECT` (e de `SHOW VIEW`, `TRIGGER` e `EVENT` para listar esses objetos).
 
+## Interface no navegador
+
+Em vez da linha de comando:
+
+```bash
+source .venv/bin/activate
+python interface.py            # abre o navegador em http://127.0.0.1:8765/?t=...
+```
+
+Na página preenchem-se as duas ligações (o botão **Testar ligação** confirma os dados e
+sugere as bases existentes), escolhe-se o modo (Validar, Migrar, Verificar ou Tudo) e as
+opções. A janela de terminal à direita mostra a saída do `migrar.py` em tempo real, com as
+mesmas cores e progresso do terminal. No fim aparecem os links para os relatórios desta
+execução; os anteriores estão na lista **Relatórios anteriores**.
+
+- **Parar** interrompe como um Ctrl+C: o relatório até ali fica gravado. Carregar outra
+  vez termina o processo de imediato.
+- Fechar ou recarregar a página não pára a migração; ao reabrir o link, a saída é retomada.
+- A página guarda no navegador os dados do formulário, **excepto as senhas**.
+- A interface só escuta em `127.0.0.1` e cada arranque gera um token novo, que vai no link.
+  Sem ele a API não responde. As senhas passam ao `migrar.py` por variável de ambiente,
+  não pela linha de comando.
+- Opções: `--porta 9000` (se a porta estiver ocupada, escolhe outra livre) e
+  `--sem-navegador` (só mostra o link). Ctrl+C no terminal fecha a interface.
+
+Não precisa de nada além do `requirements.txt`: usa apenas a biblioteca padrão do Python.
+
 ## Relatórios
 
 Cada execução grava em `relatorios/`:
