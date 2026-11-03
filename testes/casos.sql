@@ -82,3 +82,42 @@ DELIMITER ;
 CREATE VIEW v_cidade_pais AS
   SELECT c.id, c.nome, p.nome AS pais, IF(c.ativa = 1, 'sim', 'não') AS ativa, nome_completo(c.nome, c.pais) AS rotulo
   FROM cidade c LEFT JOIN pais p ON p.codigo = c.pais;
+
+-- Colunas geradas (STORED e VIRTUAL, uma delas usada num UNIQUE), valores por defeito com expressão,
+-- FKs em bigint unsigned e índices com prefixo sobre TEXT (casos da base gestao_stock).
+CREATE TABLE loja_produto (id bigint unsigned AUTO_INCREMENT PRIMARY KEY, descricao text NOT NULL,
+  imagem text NOT NULL DEFAULT ('product_icon.png'), formato text NOT NULL DEFAULT ('array(90, 28)'),
+  codigo text, criado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ref char(36) DEFAULT (uuid()),
+  INDEX idx_descricao (descricao(20)), UNIQUE KEY uq_codigo (codigo(10)));
+CREATE TABLE loja_carrinho (id bigint unsigned AUTO_INCREMENT PRIMARY KEY, user_id bigint unsigned,
+  session_id varchar(64), status enum('ativo','fechado') NOT NULL DEFAULT 'ativo', loja varchar(10) NOT NULL,
+  produto_id bigint unsigned NOT NULL, lote_id bigint unsigned, criado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  chave_linha varchar(64) GENERATED ALWAYS AS (concat(produto_id, '|', coalesce(lote_id, 0))) STORED,
+  chave_activa char(32) GENERATED ALWAYS AS (if(status = 'ativo', md5(concat(coalesce(cast(user_id as char charset utf8mb4),
+    concat('s:', coalesce(session_id, ''))), '|', loja)), NULL)) STORED,
+  ano varchar(4) GENERATED ALWAYS AS (date_format(criado, '%Y')) VIRTUAL,
+  UNIQUE KEY uq_activo (chave_activa),
+  CONSTRAINT fk_carrinho_produto FOREIGN KEY (produto_id) REFERENCES loja_produto (id));
+INSERT INTO loja_produto (descricao, codigo) VALUES ('Arroz 5kg', 'ARZ-0000001'), ('Óleo 1L', 'OLE-0000001');
+INSERT INTO loja_produto (descricao, imagem, codigo) VALUES (REPEAT('longa ', 1000), 'x.png', NULL);
+INSERT INTO loja_carrinho (user_id, session_id, status, loja, produto_id, lote_id, criado) VALUES
+  (7, NULL, 'ativo', 'L1', 1, NULL, '2025-03-04 10:00:00'), (NULL, 'abc', 'ativo', 'L1', 2, 5, '2026-01-01 00:00:00'),
+  (7, NULL, 'fechado', 'L1', 1, 3, '2026-02-02 12:00:00'), (NULL, NULL, 'ativo', 'L2', 2, NULL, '2026-02-03 08:00:00');
+
+-- Conversões inválidas mais comuns: datas parciais e inválidas (gravadas sem modo estrito),
+-- espaços no fim em chaves PAD SPACE ('x' = 'x ' no MySQL), \u0000 em JSON, bit(64), nome reservado.
+SET SESSION sql_mode = 'ALLOW_INVALID_DATES';
+CREATE TABLE evento_datas (id int PRIMARY KEY, dia date NOT NULL, quando datetime);
+INSERT INTO evento_datas VALUES (1, '2024-05-00', '2024-00-10 10:00:00'), (2, '2023-02-31', '2023-04-31 08:00:00'),
+  (3, '2024-02-29', '2024-02-29 23:59:59');
+SET SESSION sql_mode = '';
+CREATE TABLE categoria_pad (nome varchar(20) COLLATE utf8mb4_general_ci PRIMARY KEY,
+  descricao varchar(40) COLLATE utf8mb4_general_ci, UNIQUE KEY uq_descricao (descricao));
+CREATE TABLE artigo_pad (id int PRIMARY KEY, categoria varchar(20) COLLATE utf8mb4_general_ci,
+  CONSTRAINT fk_artigo_categoria FOREIGN KEY (categoria) REFERENCES categoria_pad (nome));
+INSERT INTO categoria_pad VALUES ('Bebidas', 'Bebidas e sumos '), ('Arroz ', 'Arroz');
+INSERT INTO artigo_pad VALUES (1, 'Bebidas '), (2, 'Arroz'), (3, 'bebidas');
+CREATE TABLE diversos (id int PRIMARY KEY, dados json, bandeiras bit(64), `table` varchar(20), `user` int);
+INSERT INTO diversos VALUES (1, '{"nome": "a\\u0000b", "lista": ["x\\u0000"]}', b'1111111111111111111111111111111111111111111111111111111111111111', 'anexo', 1),
+  (2, '{"ok": true}', b'101', NULL, NULL);

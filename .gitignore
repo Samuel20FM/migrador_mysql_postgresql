@@ -1,0 +1,7 @@
+# Relatorios gerados pelas migracoes
+relatorios/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

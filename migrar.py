@@ -46,7 +46,7 @@ try:
     from psycopg import sql
 
     import objetos
-    from objetos import NaoSuportado
+    from objetos import NaoSuportado, desescapar_information_schema
 except ImportError as e:  # pragma: no cover
     sys.exit(f"Falta uma dependência ({e.name}). Instale com: pip install -r requirements.txt")
 
@@ -184,6 +184,11 @@ class Coluna:
     identidade: bool = False
     valores_enum: list[str] = field(default_factory=list)
     check_enum: bool = False
+    nao_negativo: bool = False      # unsigned no MySQL → CHECK (coluna >= 0)
+    expressao: str = ""             # fórmula da coluna gerada (MySQL)
+    geracao_pg: str | None = None   # a mesma fórmula em PostgreSQL
+    geracao_modo: str = ""          # "stored" (GENERATED ... STORED), "trigger" ou "" (coluna normal)
+    aparar: bool = False            # --aparar-espacos: tira os espaços do fim (chaves/índices PAD SPACE)
 
     @property
     def unsigned(self) -> bool:
@@ -211,6 +216,7 @@ class Indice:
     prefixo: bool
     tipo: str
     nome_pg: str = ""
+    tamanhos: list = field(default_factory=list)  # SUB_PART de cada coluna (None = coluna inteira)
 
 
 @dataclass
@@ -275,19 +281,25 @@ def ler_esquema_mysql(con, base: str, incluir: set[str] | None, excluir: set[str
             continue
         tabelas[nome] = Tabela(nome, [], [], [], [], comentario or "", int(linhas or 0), int(tamanho or 0))
 
+    consulta_colunas = (
+        "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, "
+        "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, DATETIME_PRECISION, EXTRA, COLUMN_COMMENT, "
+        "COLLATION_NAME, {} "
+        "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME, ORDINAL_POSITION")
+    try:
+        linhas_colunas = consultar(consulta_colunas.format("GENERATION_EXPRESSION"))
+    except pymysql.Error:  # MySQL 5.6 e anteriores: não há colunas geradas
+        linhas_colunas = consultar(consulta_colunas.format("''"))
     for (t, nome, padrao, nula, tipo_dado, tipo_coluna, tamanho, precisao, escala, prec_tempo, extra,
-         comentario, colacao) in consultar(
-            "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, "
-            "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, DATETIME_PRECISION, EXTRA, COLUMN_COMMENT, "
-            "COLLATION_NAME "
-            "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME, ORDINAL_POSITION"):
+         comentario, colacao, expressao) in linhas_colunas:
         if t in tabelas:
             tabelas[t].colunas.append(Coluna(
                 nome, tipo_dado.lower(), tipo_coluna, nula == "YES", padrao, extra or "",
                 int(tamanho) if tamanho is not None else None,
                 int(precisao) if precisao is not None else None,
                 int(escala) if escala is not None else None,
-                int(prec_tempo) if prec_tempo is not None else None, comentario or "", colacao or ""))
+                int(prec_tempo) if prec_tempo is not None else None, comentario or "", colacao or "",
+                expressao=expressao or ""))
 
     indices: dict[tuple[str, str], Indice] = {}
     for t, nome, nao_unico, coluna, sub_part, tipo in consultar(
@@ -304,6 +316,7 @@ def ler_esquema_mysql(con, base: str, incluir: set[str] | None, excluir: set[str
         ind = indices.setdefault((t, nome), Indice(nome, [], int(nao_unico) == 0, False, tipo or "BTREE"))
         if ind.tipo != "FUNCIONAL":
             ind.colunas.append(coluna)
+            ind.tamanhos.append(int(sub_part) if sub_part is not None else None)
             ind.prefixo = ind.prefixo or sub_part is not None
     for (t, _), ind in indices.items():
         tabelas[t].indices.append(ind)
@@ -439,12 +452,21 @@ TIPOS_ESPACIAIS = {"geometry": "", "point": "Point", "linestring": "LineString",
 @dataclass
 class Estatisticas:
     """Contagens tiradas dos dados de uma coluna, usadas para decidir a conversão."""
-    datas_zero: int = 0
+    datas_zero: int = 0       # 0000-00-00
+    datas_parciais: int = 0   # ano, mês ou dia a zero, ex.: 2024-05-00
+    datas_invalidas: int = 0  # dia que não existe no mês, ex.: 2023-02-31 (ALLOW_INVALID_DATES)
     fora_bool: int = 0
     nul_bytes: int = 0
+    json_nul: int = 0         # \u0000 dentro de JSON (o jsonb recusa-o)
+    espacos_fim: int = 0      # valores com espaços no fim numa coluna de chave/índice PAD SPACE
     enum_vazio: int = 0
     hora_fora: int = 0
     acima_bigint: int = 0
+
+    @property
+    def datas_sem_valor(self) -> int:
+        """Datas que o PostgreSQL não aceita e passam a NULL."""
+        return self.datas_zero + self.datas_parciais + self.datas_invalidas
 
 
 def valores_enum(tipo_coluna: str) -> list[str]:
@@ -452,18 +474,49 @@ def valores_enum(tipo_coluna: str) -> list[str]:
     return [v.replace("''", "'").replace("\\\\", "\\") for v in re.findall(r"'((?:[^']|'')*)'", corpo)]
 
 
-def estatisticas_tabela(con, t: Tabela, usar_bool: bool) -> dict[str, Estatisticas]:
+def pad_space(colacao: str) -> bool:
+    """Collation que ignora os espaços do fim ao comparar ('a' = 'a ').
+
+    No MySQL 8 só as collations _0900_ são NO PAD; no MariaDB, as que têm "nopad" no nome.
+    """
+    c = colacao.lower()
+    return bool(c) and "_0900_" not in c and "nopad" not in c and c != "binary"
+
+
+def colunas_chave(esq: EsquemaMySQL) -> set[tuple[str, str]]:
+    """(tabela, coluna) que estão numa PK, índice ou FK (dos dois lados)."""
+    chaves: set[tuple[str, str]] = set()
+    for t in esq.tabelas.values():
+        chaves.update((t.nome, c) for c in t.pk)
+        for ind in t.indices:
+            chaves.update((t.nome, c) for c in ind.colunas)
+        for fk in t.fks:
+            chaves.update((t.nome, c) for c in fk.colunas)
+            chaves.update((fk.tabela_ref, c) for c in fk.colunas_ref)
+    return chaves
+
+
+def estatisticas_tabela(con, t: Tabela, usar_bool: bool,
+                        chaves: set[tuple[str, str]] = frozenset()) -> dict[str, Estatisticas]:
     """Uma única leitura completa da tabela com todas as contagens necessárias."""
     exprs: list[tuple[str, str, str]] = []
     for c in t.colunas:
         q = qm(c.nome)
         if c.tipo_dado in TIPOS_DATA:
-            exprs.append((c.nome, "datas_zero",
-                          f"SUM({q} IS NOT NULL AND (YEAR({q})=0 OR MONTH({q})=0 OR DAYOFMONTH({q})=0))"))
+            algum_zero = f"(YEAR({q})=0 OR MONTH({q})=0 OR DAYOFMONTH({q})=0)"
+            tudo_zero = f"(YEAR({q})=0 AND MONTH({q})=0 AND DAYOFMONTH({q})=0)"
+            exprs.append((c.nome, "datas_zero", f"SUM({q} IS NOT NULL AND {tudo_zero})"))
+            exprs.append((c.nome, "datas_parciais", f"SUM({q} IS NOT NULL AND {algum_zero} AND NOT {tudo_zero})"))
+            exprs.append((c.nome, "datas_invalidas",
+                          f"SUM({q} IS NOT NULL AND NOT {algum_zero} AND DAYOFMONTH({q}) > DAYOFMONTH(LAST_DAY({q})))"))
         elif c.tipo_dado == "tinyint" and usar_bool and c.tipo_coluna.lower().startswith("tinyint(1)"):
             exprs.append((c.nome, "fora_bool", f"SUM({q} NOT IN (0,1))"))
         elif c.tipo_dado in TIPOS_TEXTO or c.tipo_dado in ("set", "json"):
             exprs.append((c.nome, "nul_bytes", f"SUM(INSTR(CAST({q} AS BINARY), CHAR(0)) > 0)"))
+            if c.tipo_dado == "json":
+                exprs.append((c.nome, "json_nul", f"SUM(INSTR(CAST({q} AS CHAR), '\\\\u0000') > 0)"))
+            if (t.nome, c.nome) in chaves and pad_space(c.colacao):
+                exprs.append((c.nome, "espacos_fim", f"SUM(CHAR_LENGTH({q}) > CHAR_LENGTH(RTRIM({q})))"))
         elif c.tipo_dado == "enum" and "" not in valores_enum(c.tipo_coluna):
             exprs.append((c.nome, "enum_vazio", f"SUM({q} = '')"))
         elif c.tipo_dado == "time":
@@ -525,6 +578,8 @@ class Planeador:
         self.colunas_ci = 0
         self.colunas_fk: set[tuple[str, str]] = set()
         self.tabela_atual = ""
+        self.padroes_expressao: list[tuple[str, Coluna]] = []  # valores por defeito que são expressões
+        self.tradutor: objetos.Tradutor | None = None
 
     def nome_pg(self, nome: str) -> str:
         return nome if self.args.manter_maiusculas else nome.lower()
@@ -556,7 +611,9 @@ class Planeador:
         if t in ("int", "integer"):
             return ("bigint" if c.unsigned else "integer"), ""
         if t == "bigint":
-            return ("numeric(20)" if c.unsigned and not c.auto else "bigint"), ""
+            # bigint unsigned → bigint, desde que os valores caibam (o CHECK >= 0 mantém o "sem sinal").
+            # Com numeric(20), as FKs para ids bigint não podiam ser criadas no PostgreSQL.
+            return ("numeric(20)" if c.unsigned and est.acima_bigint else "bigint"), ""
         if t in ("decimal", "numeric"):
             return f"numeric({c.precisao},{c.escala or 0})", ""
         if t == "float":
@@ -564,7 +621,10 @@ class Planeador:
         if t in ("double", "real"):
             return "double precision", ""
         if t == "bit":
-            return ("boolean", "bit1") if (c.precisao or 1) == 1 else ("bigint", "bit")
+            if (c.precisao or 1) == 1:
+                return "boolean", "bit1"
+            # bit(64) pode passar o máximo do bigint (tem 64 bits sem sinal)
+            return ("numeric(20)" if (c.precisao or 1) >= 64 else "bigint"), "bit"
         if t in ("char", "varchar"):
             return f"varchar({c.tamanho})", "texto"
         if t in TIPOS_TEXTO:
@@ -584,7 +644,7 @@ class Planeador:
         if t == "year":
             return "smallint", ""
         if t == "json":
-            return "jsonb", "texto"
+            return "jsonb", "json"
         if t == "enum":
             vals = valores_enum(c.tipo_coluna)
             return f"varchar({max([len(v) for v in vals] + [1])})", "texto"
@@ -618,8 +678,9 @@ class Planeador:
         if up in ("CURDATE()", "CURRENT_DATE", "CURRENT_DATE()"):
             return sql.SQL("CURRENT_DATE")
         if "DEFAULT_GENERATED" in c.extra.upper():
-            self.rel.add("validacao", "AVISO", "Valor por defeito não convertido", alvo,
-                         f"expressão {d!r} não tem tradução automática; recrie-a à mão.")
+            # Expressão (MySQL 8), ex.: ('texto') num TEXT, (uuid()). É traduzida no fim do plano,
+            # quando todos os tipos já são conhecidos, e testada no PostgreSQL em validar().
+            self.padroes_expressao.append((tabela, c))
             return None
         if c.conversao in ("bool", "bit1"):
             if d in ("0", "b'0'"):
@@ -630,8 +691,15 @@ class Planeador:
             return sql.SQL(str(int(d[2:-1] or "0", 2)))
         if c.conversao in ("data", "data_tz"):
             if d.startswith("0000-00-00"):
-                self.rel.add("validacao", "AVISO", "Valor por defeito removido", alvo,
-                             f"data zero {d!r} não existe no PostgreSQL.")
+                # A data zero não existe no PostgreSQL. Faz-se o mesmo que nos dados: passa a NULL.
+                # Sem valor por defeito, uma coluna NOT NULL recusaria os INSERT que o omitem.
+                extra = ""
+                if not c.nula_pg:
+                    c.nula_pg = True
+                    extra = " A coluna era NOT NULL e passa a aceitar NULL."
+                self.rel.add("validacao", "AVISO", "Data zero por defeito → NULL", alvo,
+                             f"o PostgreSQL não tem a data {d!r}; o valor por defeito passa a NULL, como as datas "
+                             f"zero dos dados.{extra} Na aplicação, troque = '0000-00-00' por IS NULL.")
                 return None
             return sql.Literal(d)
         if familia(c.tipo_pg) == "numero":
@@ -687,13 +755,32 @@ class Planeador:
                 if c.conversao == "geom":
                     self.rel.add("validacao", "INFO", "Coluna espacial (PostGIS)", alvo,
                                  f"{c.tipo_coluna} → {c.tipo_pg}.")
-                if est.datas_zero:
-                    extra = ""
+                if est.datas_sem_valor:
                     if not c.nula:
                         c.nula_pg = True
-                        extra = " A coluna é NOT NULL no MySQL e fica a aceitar NULL."
-                    self.rel.add("validacao", "AVISO", "Datas zero (0000-00-00)", alvo,
-                                 f"{est.datas_zero} linha(s) passam a NULL.{extra}")
+                    extra = " A coluna é NOT NULL no MySQL e fica a aceitar NULL." if not c.nula else ""
+                    for n, cat, explic in (
+                            (est.datas_zero, "Datas zero (0000-00-00)", ""),
+                            (est.datas_parciais, "Datas parciais (ex.: 2024-05-00)",
+                             " Ano, mês ou dia a zero não existem no PostgreSQL."),
+                            (est.datas_invalidas, "Datas inválidas (ex.: 2023-02-31)",
+                             " O dia não existe nesse mês (gravadas com ALLOW_INVALID_DATES).")):
+                        if n:
+                            self.rel.add("validacao", "AVISO", cat, alvo, f"{n} linha(s) passam a NULL.{explic}{extra}")
+                if est.json_nul:
+                    self.rel.add("validacao", "AVISO", "\\u0000 em JSON", alvo,
+                                 f"{est.json_nul} linha(s); o jsonb do PostgreSQL não aceita \\u0000 e ele será removido.")
+                if est.espacos_fim:
+                    if self.args.aparar_espacos:
+                        c.aparar = True
+                        self.rel.add("validacao", "AVISO", "Espaços no fim removidos (--aparar-espacos)", alvo,
+                                     f"{est.espacos_fim} valor(es) perdem os espaços do fim, para '=', UNIQUE e FKs "
+                                     "compararem como no MySQL.")
+                    else:
+                        self.rel.add("validacao", "AVISO", "Espaços no fim numa chave ou índice", alvo,
+                                     f"{est.espacos_fim} valor(es) terminam em espaço. No MySQL (collation "
+                                     f"{c.colacao}, PAD SPACE) 'x' = 'x '; no PostgreSQL não: WHERE = deixa de os "
+                                     "encontrar e UNIQUE passa a aceitar os dois. Use --aparar-espacos para os remover.")
                 if est.nul_bytes:
                     self.rel.add("validacao", "AVISO", "Carácter NUL (\\0) em texto", alvo,
                                  f"{est.nul_bytes} linha(s); o PostgreSQL não aceita \\0 em texto e ele será removido.")
@@ -705,16 +792,22 @@ class Planeador:
                     c.check_enum = not self.args.enum_sem_check
                     if est.enum_vazio:
                         c.valores_enum.append("")
-                        self.rel.add("validacao", "AVISO", "ENUM com valor inválido ''", alvo,
-                                     f"{est.enum_vazio} linha(s) com ''; '' foi aceite no CHECK para não perder dados.")
+                        self.rel.add("validacao", "INFO", "ENUM com valor inválido ''", alvo,
+                                     f"{est.enum_vazio} linha(s) com ''. O MySQL guarda '' quando recebe um valor que "
+                                     "não está na lista; '' entra no CHECK e os dados ficam iguais.")
                 if c.tipo_dado == "set":
                     self.rel.add("validacao", "INFO", "SET convertido para texto", alvo,
                                  "valores ficam separados por vírgula, sem validação.")
-                if c.gerada:
-                    self.rel.add("validacao", "AVISO", "Coluna gerada", alvo,
-                                 "fica como coluna normal com os valores atuais; recrie a fórmula se precisar.")
+                if c.unsigned and familia(c.tipo_pg) == "numero" and not c.identidade:
+                    c.nao_negativo = True
                 if c.tipo_dado == "bigint" and c.unsigned and not c.auto:
-                    self.rel.add("validacao", "INFO", "bigint unsigned", alvo, "fica numeric(20) para caber o intervalo.")
+                    if est.acima_bigint:
+                        self.rel.add("validacao", "AVISO", "bigint unsigned acima do limite do bigint", alvo,
+                                     f"{est.acima_bigint} valor(es) acima de {BIGINT_MAX}: fica numeric(20). As FKs "
+                                     "entre esta coluna e um bigint não podem ser criadas no PostgreSQL.")
+                    else:
+                        self.rel.add("validacao", "INFO", "bigint unsigned", alvo,
+                                     "fica bigint (todos os valores cabem) com CHECK (>= 0), como o unsigned do MySQL.")
                 if len(c.nome_pg.encode()) > 63:
                     self.rel.add("validacao", "ERRO", "Nome demasiado longo", alvo,
                                  "nomes de coluna no PostgreSQL têm no máximo 63 bytes.")
@@ -727,6 +820,7 @@ class Planeador:
             for ind in t.indices:
                 ind.nome_pg = self.nome_unico(f"{t.nome_pg}_{self.nome_pg(ind.nome)}")
                 renomeados += 1
+        self.traduzir_expressoes(esq)
         if renomeados:
             self.rel.add("validacao", "INFO", "Índices renomeados", f"{renomeados} índices",
                          "no PostgreSQL os nomes de índice são únicos por esquema; ficam <tabela>_<índice>.")
@@ -741,6 +835,134 @@ class Planeador:
         for t in esq.tabelas.values():
             for fk in t.fks:
                 fk.nome_pg = self.nome_unico(self.nome_pg(fk.nome))
+
+
+    def traduzir_expressoes(self, esq: EsquemaMySQL) -> None:
+        """Fórmulas das colunas geradas e valores por defeito que são expressões."""
+        self.tradutor = tr = criar_tradutor(esq, self.args)
+        escapado = not self.mariadb
+        for t in esq.tabelas.values():
+            for c in t.colunas:
+                if not (c.gerada and c.tipo_pg):
+                    continue
+                try:
+                    c.geracao_pg = tr.expressao_coluna(c.expressao, t.nome, escapado=escapado)
+                    c.geracao_modo = "stored"  # confirmado no PostgreSQL em testar_expressoes()
+                except NaoSuportado as e:
+                    self.rel.add("validacao", "AVISO", "Coluna gerada sem tradução", f"{t.nome}.{c.nome}",
+                                 f"{e}. Fica como coluna normal com os valores atuais.")
+        for tabela, c in self.padroes_expressao:
+            try:
+                c.padrao_pg = sql.SQL(tr.expressao_coluna(c.padrao, tabela, escapado=escapado))
+            except NaoSuportado as e:
+                self.rel.add("validacao", "AVISO", "Valor por defeito não convertido", f"{tabela}.{c.nome}",
+                             f"{e}; a coluna fica sem valor por defeito.")
+
+
+def testar_expressoes(esq: EsquemaMySQL, con_pg, rel: Relatorio, plan: Planeador) -> None:
+    """Experimenta no PostgreSQL (numa tabela temporária, sempre desfeita) as fórmulas das colunas
+    geradas e os valores por defeito traduzidos, e escolhe a forma de os criar."""
+    fase = "validacao"
+
+    def colunas_base(t: Tabela) -> sql.Composable:
+        return sql.SQL(", ").join(
+            sql.SQL("{} {}").format(sql.Identifier(c.nome_pg), sql.SQL(c.tipo_pg if c.conversao != "geom" else "text"))
+            for c in t.colunas if c.tipo_pg and not c.geracao_modo)
+
+    def experimentar(*comandos: sql.Composable) -> str:
+        """'' se o PostgreSQL aceitar os comandos; senão a primeira linha do erro."""
+        try:
+            with con_pg.transaction(force_rollback=True), con_pg.cursor() as cur:
+                for cmd in comandos:
+                    cur.execute(cmd)
+            return ""
+        except psycopg.Error as e:
+            return str(e).strip().splitlines()[0]
+
+    temp = sql.Identifier("migr_teste_expressao")
+    for t in esq.tabelas.values():
+        for c in t.colunas:
+            if not c.geracao_modo:
+                continue
+            alvo = f"{t.nome}.{c.nome}"
+            virtual = "VIRTUAL" in c.extra.upper()
+            erro = experimentar(sql.SQL("CREATE TEMP TABLE {} ({}, {} {} GENERATED ALWAYS AS ({}) STORED)").format(
+                temp, colunas_base(t), sql.Identifier(c.nome_pg), sql.SQL(c.tipo_pg), sql.SQL(c.geracao_pg)))
+            if not erro:
+                rel.add(fase, "INFO", "Coluna gerada traduzida", alvo,
+                        f"GENERATED ALWAYS AS ({c.geracao_pg}) STORED: o PostgreSQL calcula o valor, como o MySQL"
+                        + (" (no MySQL era VIRTUAL; STORED dá os mesmos valores e pode ter índices)." if virtual else "."))
+                continue
+            # O PostgreSQL só aceita funções imutáveis numa coluna gerada. Um trigger não tem essa limitação.
+            erro_trigger = experimentar(
+                sql.SQL("CREATE TEMP TABLE {} ({})").format(temp, colunas_base(t)),
+                sql.SQL("SELECT ({})::{} FROM {}").format(sql.SQL(c.geracao_pg), sql.SQL(c.tipo_pg), temp))
+            if not erro_trigger:
+                c.geracao_modo = "trigger"
+                rel.add(fase, "INFO", "Coluna gerada calculada por trigger", alvo,
+                        f"o PostgreSQL não a aceita como GENERATED ({erro}); um trigger calcula-a em cada INSERT e "
+                        "UPDATE com a mesma fórmula.")
+            else:
+                c.geracao_modo = ""
+                rel.add(fase, "AVISO", "Coluna gerada sem tradução", alvo,
+                        f"a fórmula traduzida dá erro no PostgreSQL ({erro_trigger}). Fica como coluna normal com "
+                        "os valores atuais.")
+    for tabela, c in plan.padroes_expressao:
+        if c.padrao_pg is None:
+            continue
+        erro = experimentar(sql.SQL("SELECT ({})::{}").format(c.padrao_pg, sql.SQL(c.tipo_pg)))
+        if erro:
+            rel.add(fase, "AVISO", "Valor por defeito não convertido", f"{tabela}.{c.nome}",
+                    f"a expressão {c.padrao_pg.as_string(None)} dá erro no PostgreSQL ({erro}); a coluna fica sem "
+                    "valor por defeito.")
+            c.padrao_pg = None
+        else:
+            original = c.padrao if plan.mariadb else desescapar_information_schema(c.padrao)
+            rel.add(fase, "INFO", "Valor por defeito traduzido", f"{tabela}.{c.nome}",
+                    f"{original} → DEFAULT {c.padrao_pg.as_string(None)}.")
+
+
+def avisar_modo_nao_estrito(esq: EsquemaMySQL, ests: dict[str, dict[str, Estatisticas]], con_my,
+                            rel: Relatorio) -> None:
+    """O MySQL sem modo estrito aceita INSERTs que o PostgreSQL recusa.
+
+    O modo atual do servidor não chega: o WordPress, por exemplo, desliga o modo estrito na
+    própria ligação. Datas zero e ENUM '' nos dados mostram que a aplicação escreveu sem ele.
+    """
+    with con_my.cursor() as cur:
+        cur.execute("SELECT @@GLOBAL.sql_mode")
+        modo = (cur.fetchone()[0] or "").upper()
+    estrito = "STRICT_TRANS_TABLES" in modo or "STRICT_ALL_TABLES" in modo
+    sinais = sum(e.datas_sem_valor + e.enum_vazio for por_col in ests.values() for e in por_col.values())
+    sinais += sum(1 for t in esq.tabelas.values() for c in t.colunas
+                  if c.tipo_dado in TIPOS_DATA and (c.padrao or "").strip("'").startswith("0000-00-00"))
+    if estrito and not sinais:
+        return
+    obrigatorias = [f"{t.nome}.{c.nome}" for t in esq.tabelas.values() for c in t.colunas
+                    if not c.nula and c.padrao is None and not c.auto and not c.gerada]
+    origem = ("o servidor MySQL não usa modo estrito" if not estrito else
+              f"o servidor usa modo estrito, mas os dados têm {sinais} sinal(is) de escrita sem ele "
+              "(datas zero, ENUM '' ou DEFAULT '0000-00-00'): a aplicação pode desligá-lo na ligação, como o WordPress")
+    msg = (f"{origem}. Sem modo estrito o MySQL aceita INSERTs que omitem colunas NOT NULL (grava 0, '' ou "
+           "data zero) e corta textos longos; o PostgreSQL recusa-os com erro.")
+    if obrigatorias:
+        msg += (f" {len(obrigatorias)} coluna(s) NOT NULL sem valor por defeito "
+                f"(ex.: {', '.join(obrigatorias[:5])}): confirme que a aplicação as preenche sempre.")
+    rel.add("validacao", "AVISO", "Aplicação escreve sem modo estrito", "MySQL", msg)
+
+
+def avisar_nomes_reservados(esq: EsquemaMySQL, con_pg, rel: Relatorio) -> None:
+    """Tabelas e colunas com nomes reservados no PostgreSQL (ex.: table, user, order)."""
+    with con_pg.cursor() as cur:
+        cur.execute("SELECT word FROM pg_get_keywords() WHERE catcode IN ('R', 'T')")
+        reservadas = {r[0] for r in cur.fetchall()}
+    for t in esq.tabelas.values():
+        nomes = ([f"tabela {t.nome_pg}"] if t.nome_pg.lower() in reservadas else []) + \
+                [c.nome_pg for c in t.colunas if c.nome_pg.lower() in reservadas]
+        if nomes:
+            rel.add("validacao", "AVISO", "Nome reservado no PostgreSQL", t.nome,
+                    f"{', '.join(nomes)}: a migração cria-os entre aspas, mas no SQL da aplicação têm de ir "
+                    'entre aspas também (ex.: SELECT "table" FROM ...), senão dá erro de sintaxe.')
 
 
 def validar(esq: EsquemaMySQL, con_my, con_pg, args, rel: Relatorio, plan: Planeador,
@@ -775,11 +997,15 @@ def validar(esq: EsquemaMySQL, con_my, con_pg, args, rel: Relatorio, plan: Plane
                 "Use lower()/ILIKE na aplicação.")
 
     ests: dict[str, dict[str, Estatisticas]] = {}
+    chaves = colunas_chave(esq)
     for i, t in enumerate(esq.tabelas.values(), 1):
         progresso(f"  A analisar dados: {i}/{len(esq.tabelas)} {t.nome[:40]:<40}")
-        ests[t.nome] = estatisticas_tabela(con_my, t, not args.sem_booleanos)
+        ests[t.nome] = estatisticas_tabela(con_my, t, not args.sem_booleanos, chaves)
     limpar_progresso()
     plan.planear(esq, ests)
+    testar_expressoes(esq, con_pg, rel, plan)
+    avisar_modo_nao_estrito(esq, ests, con_my, rel)
+    avisar_nomes_reservados(esq, con_pg, rel)
     if plan.colunas_ci:
         rel.add(fase, "INFO", "Texto sem distinguir maiúsculas (como no MySQL)", f"{plan.colunas_ci} colunas",
                 "usam uma collation que ignora maiúsculas e acentos: WHERE nome = 'jose' encontra 'José', "
@@ -792,8 +1018,9 @@ def validar(esq: EsquemaMySQL, con_my, con_pg, args, rel: Relatorio, plan: Plane
 
     for t in esq.tabelas.values():
         if not t.pk:
-            rel.add(fase, "AVISO", "Tabela sem chave primária", t.nome,
-                    "a comparação linha a linha é feita por conjunto de linhas (mais lenta, sem indicar o campo).")
+            rel.add(fase, "INFO", "Tabela sem chave primária", t.nome,
+                    "migrada igual (também sem chave primária). Só a verificação muda: compara por conjunto de linhas, "
+                    "mais lenta e sem indicar o campo diferente.")
         for ind in t.indices:
             if ind.tipo == "FULLTEXT":
                 rel.add(fase, "INFO", "Índice FULLTEXT → GIN", f"{t.nome}.{ind.nome}",
@@ -806,8 +1033,7 @@ def validar(esq: EsquemaMySQL, con_my, con_pg, args, rel: Relatorio, plan: Plane
                 rel.add(fase, "AVISO", "Índice funcional não migrado", f"{t.nome}.{ind.nome}",
                         "crie o equivalente à mão (CREATE INDEX ... ON tabela ((expressão))).")
             elif ind.prefixo:
-                rel.add(fase, "INFO", "Índice com prefixo", f"{t.nome}.{ind.nome}",
-                        "o PostgreSQL não indexa prefixos; o índice fica sobre a coluna inteira.")
+                rel.add(fase, "INFO", "Índice com prefixo", f"{t.nome}.{ind.nome}", forma_indice_prefixo(t, ind)[1])
         if any(c.on_update for c in t.colunas):
             cols = ", ".join(c.nome for c in t.colunas if c.on_update)
             rel.add(fase, "INFO", "ON UPDATE CURRENT_TIMESTAMP", t.nome, f"{cols}: recriado com um trigger.")
@@ -848,14 +1074,23 @@ def validar(esq: EsquemaMySQL, con_my, con_pg, args, rel: Relatorio, plan: Plane
                                 "(o PostgreSQL exige-o; os dados atuais já são únicos).")
                 # Órfãos, comparados como o PostgreSQL vai comparar: texto com collation que ignora
                 # maiúsculas compara como no MySQL; texto sem ela compara em binário ('ABC' <> 'abc').
+                # Espaços no fim: o MySQL (PAD SPACE) ignora-os; o PostgreSQL não, salvo com --aparar-espacos.
                 def igual(c: str, cr: str) -> str:
                     col = t.coluna(c)
-                    if familia(col.tipo_pg) == "texto" and not (col.colacao_pg and pai.coluna(cr).colacao_pg):
-                        return f"CAST(f.{qm(c)} AS BINARY) = CAST(p.{qm(cr)} AS BINARY)"
+                    fc, pc = f"f.{qm(c)}", f"p.{qm(cr)}"
+                    if familia(col.tipo_pg) != "texto":
+                        return f"{fc} = {pc}"
+                    if not (col.colacao_pg and pai.coluna(cr).colacao_pg):
+                        if args.aparar_espacos:
+                            fc, pc = f"RTRIM({fc})", f"RTRIM({pc})"
+                        return f"CAST({fc} AS BINARY) = CAST({pc} AS BINARY)"
                     colacao_pai = pai.coluna(cr).colacao
-                    if familia(col.tipo_pg) == "texto" and colacao_pai and col.colacao != colacao_pai:
-                        return f"f.{qm(c)} COLLATE {colacao_pai} = p.{qm(cr)}"
-                    return f"f.{qm(c)} = p.{qm(cr)}"
+                    cond = (f"{fc} COLLATE {colacao_pai} = {pc}" if colacao_pai and col.colacao != colacao_pai
+                            else f"{fc} = {pc}")
+                    if not args.aparar_espacos and (pad_space(col.colacao) or pad_space(colacao_pai)):
+                        cond += (f" AND CHAR_LENGTH({fc}) - CHAR_LENGTH(RTRIM({fc})) = "
+                                 f"CHAR_LENGTH({pc}) - CHAR_LENGTH(RTRIM({pc}))")
+                    return cond
                 cond_join = " AND ".join(igual(c, cr) for c, cr in zip(fk.colunas, fk.colunas_ref))
                 nao_nulos = " AND ".join(f"f.{qm(c)} IS NOT NULL" for c in fk.colunas)
                 base_q = (f"FROM {qm(t.nome)} f LEFT JOIN {qm(pai.nome)} p ON {cond_join} "
@@ -919,6 +1154,27 @@ def validar(esq: EsquemaMySQL, con_my, con_pg, args, rel: Relatorio, plan: Plane
 # --------------------------------------------------------------------------- #
 # Objetos de código: triggers, procedures, funções, eventos, views
 # --------------------------------------------------------------------------- #
+def forma_indice_prefixo(t: Tabela, ind: Indice) -> tuple[str, str]:
+    """Como criar um índice do MySQL sobre o início de colunas, ex.: INDEX (descricao(50)).
+
+    - "inteira": colunas curtas (varchar até 600) → índice normal sobre a coluna inteira.
+    - "hash": uma só coluna longa (TEXT...), não única → hash sobre a coluna inteira. Serve o
+      WHERE col = ... e aceita valores de qualquer tamanho (um B-tree recusa linhas com mais de
+      ~2700 bytes, o que faria falhar INSERTs que no MySQL passam).
+    - "inicio": índice único ou de várias colunas → B-tree sobre left(col, n), igual ao MySQL
+      (num índice único, o MySQL também só exige que o início seja diferente).
+    """
+    cols = [t.coluna(c) for c in ind.colunas]
+    curtas = all(c.tipo_pg and c.tipo_pg.startswith("varchar") and (c.tamanho or 0) <= 600
+                 for c, n in zip(cols, ind.tamanhos) if n)
+    if not ind.unico and curtas:
+        return "inteira", "índice normal sobre a coluna inteira (é curta o suficiente)."
+    if not ind.unico and len(cols) == 1:
+        return "hash", ("índice hash sobre a coluna inteira: serve as pesquisas por igualdade (WHERE coluna = ...) "
+                        "e aceita textos de qualquer tamanho.")
+    return "inicio", "índice sobre o início das colunas, left(coluna, n), como no MySQL."
+
+
 def expressao_fulltext(t: Tabela, ind: Indice) -> str:
     """Expressão do índice GIN equivalente a um FULLTEXT do MySQL."""
     partes = [f"coalesce({sql.Identifier(t.coluna(c).nome_pg).as_string(None)}, '')" for c in ind.colunas]
@@ -1030,7 +1286,7 @@ def conversor(c: Coluna, contadores: Counter, chave: str):
         def data(v):
             if v is None:
                 return None
-            if isinstance(v, str):  # o pymysql devolve as datas inválidas/zero como texto
+            if isinstance(v, str):  # o pymysql devolve as datas zero, parciais e inválidas como texto
                 contadores[chave + ":datas_zero"] += 1
                 return None
             return v.replace(tzinfo=UTC) if tz and isinstance(v, dt.datetime) else v
@@ -1038,14 +1294,44 @@ def conversor(c: Coluna, contadores: Counter, chave: str):
     if k == "hora":
         return lambda v: None if v is None else (dt.datetime.min + v).time()
     if k == "texto":
+        aparar = c.aparar
+
         def texto(v):
             if isinstance(v, bytes):
-                v = v.decode("utf-8", "replace")
+                try:
+                    v = v.decode("utf-8")
+                except UnicodeDecodeError:
+                    contadores[chave + ":utf8_invalido"] += 1
+                    v = v.decode("utf-8", "replace")
             if isinstance(v, str) and "\x00" in v:
                 contadores[chave + ":nul_removido"] += 1
-                return v.replace("\x00", "")
+                v = v.replace("\x00", "")
+            if aparar and isinstance(v, str) and v.endswith(" "):
+                contadores[chave + ":espacos_aparados"] += 1
+                v = v.rstrip(" ")
             return v
         return texto
+    if k == "json":
+        def tirar_nul(x):
+            if isinstance(x, str):
+                return x.replace("\x00", "")
+            if isinstance(x, list):
+                return [tirar_nul(i) for i in x]
+            if isinstance(x, dict):
+                return {tirar_nul(a): tirar_nul(b) for a, b in x.items()}
+            return x
+
+        def json_pg(v):
+            if isinstance(v, bytes):
+                v = v.decode("utf-8")
+            if isinstance(v, str) and "\\u0000" in v:
+                doc = json.loads(v)
+                limpo = tirar_nul(doc)
+                if limpo != doc:
+                    contadores[chave + ":json_nul"] += 1
+                    return json.dumps(limpo, ensure_ascii=False)
+            return v
+        return json_pg
     if k == "bytes":
         return lambda v: v.encode() if isinstance(v, str) else v
     if k == "geom":
@@ -1147,10 +1433,14 @@ class Migrador:
             partes.append(sql.SQL("COLLATE {}").format(self.ident(self.args.esquema, c.colacao_pg)))
         if c.identidade:
             partes.append(sql.SQL("GENERATED BY DEFAULT AS IDENTITY"))
+        if c.geracao_modo == "stored":
+            partes.append(sql.SQL("GENERATED ALWAYS AS ({}) STORED").format(sql.SQL(c.geracao_pg)))
         if not c.nula_pg:
             partes.append(sql.SQL("NOT NULL"))
-        if c.padrao_pg is not None and not c.identidade:
+        if c.padrao_pg is not None and not c.identidade and c.geracao_modo != "stored":
             partes += [sql.SQL("DEFAULT"), c.padrao_pg]
+        if c.nao_negativo:
+            partes.append(sql.SQL("CHECK ({} >= 0)").format(self.ident(c.nome_pg)))
         if c.check_enum and c.valores_enum:
             partes.append(sql.SQL("CHECK ({} IN ({}))").format(
                 self.ident(c.nome_pg), sql.SQL(", ").join(sql.Literal(v) for v in c.valores_enum)))
@@ -1188,9 +1478,11 @@ class Migrador:
 
     def copiar_tabela(self, t: Tabela) -> None:
         inicio = time.time()
-        convs = [conversor(c, self.contadores, f"{t.nome}.{c.nome}") for c in t.colunas]
-        cols_my = ", ".join(select_mysql(c, self.esq.mariadb) for c in t.colunas)
-        cols_pg = sql.SQL(", ").join(self.ident(c.nome_pg) for c in t.colunas)
+        # As colunas GENERATED ... STORED não se copiam: o PostgreSQL calcula-as (e recusa valores).
+        colunas = [c for c in t.colunas if c.geracao_modo != "stored"]
+        convs = [conversor(c, self.contadores, f"{t.nome}.{c.nome}") for c in colunas]
+        cols_my = ", ".join(select_mysql(c, self.esq.mariadb) for c in colunas)
+        cols_pg = sql.SQL(", ").join(self.ident(c.nome_pg) for c in colunas)
         linhas = 0
         my = ligar_mysql(self.args.origem_dados)
         try:
@@ -1236,6 +1528,8 @@ class Migrador:
                         self.ident(ind.nome_pg), self.tab(t), sql.SQL(expressao_fulltext(t, ind)))
                 elif ind.tipo == "SPATIAL":
                     cmd = sql.SQL("CREATE INDEX {} ON {} USING gist ({})").format(self.ident(ind.nome_pg), self.tab(t), cols)
+                elif ind.prefixo:
+                    cmd = self.indice_prefixo(t, ind)
                 elif ind.unico:
                     cmd = sql.SQL("ALTER TABLE {} ADD CONSTRAINT {} UNIQUE ({})").format(
                         self.tab(t), self.ident(ind.nome_pg), cols)
@@ -1248,6 +1542,20 @@ class Migrador:
                     self.tab(t), self.ident(nome), sql.SQL(", ").join(self.ident(t.coluna(c).nome_pg) for c in cols_ref)),
                     "Falha ao criar UNIQUE para FK", t.nome)
         print("  Chaves primárias e índices criados")
+
+    def indice_prefixo(self, t: Tabela, ind: Indice) -> sql.Composable:
+        forma, _ = forma_indice_prefixo(t, ind)
+        cols = [t.coluna(c) for c in ind.colunas]
+        if forma == "inteira":
+            return sql.SQL("CREATE INDEX {} ON {} ({})").format(
+                self.ident(ind.nome_pg), self.tab(t), sql.SQL(", ").join(self.ident(c.nome_pg) for c in cols))
+        if forma == "hash":
+            return sql.SQL("CREATE INDEX {} ON {} USING hash ({})").format(
+                self.ident(ind.nome_pg), self.tab(t), self.ident(cols[0].nome_pg))
+        partes = [sql.SQL("left({}, {})").format(self.ident(c.nome_pg), sql.Literal(n)) if n
+                  else self.ident(c.nome_pg) for c, n in zip(cols, ind.tamanhos)]
+        return sql.SQL("CREATE {}INDEX {} ON {} ({})").format(
+            sql.SQL("UNIQUE " if ind.unico else ""), self.ident(ind.nome_pg), self.tab(t), sql.SQL(", ").join(partes))
 
     def acertar_sequencias(self, silencioso: bool = False) -> None:
         n = 0
@@ -1388,6 +1696,29 @@ class Migrador:
                 "Falha ao criar trigger ON UPDATE", t.nome)
         print(f"  {len(tabelas)} trigger(s) de ON UPDATE CURRENT_TIMESTAMP criados")
 
+    def criar_triggers_geradas(self) -> None:
+        """Colunas geradas cuja fórmula o PostgreSQL não aceita como GENERATED: um trigger
+        BEFORE INSERT OR UPDATE calcula-as. Criado depois da cópia (os valores copiados já estão certos)."""
+        tabelas = [t for t in self.esq.tabelas.values() if any(c.geracao_modo == "trigger" for c in t.colunas)]
+        tr = self.args.planeador.tradutor
+        for t in tabelas:
+            atribuicoes = []
+            for c in t.colunas:
+                if c.geracao_modo == "trigger":
+                    expr = tr.expressao_coluna(c.expressao, t.nome, prefixo_new=True, escapado=not self.esq.mariadb)
+                    atribuicoes.append(sql.SQL("  NEW.{} := {};").format(self.ident(c.nome_pg), sql.SQL(expr)))
+            funcao = self.ident(self.args.esquema, self.args.planeador.nome_unico(f"migr_gerar_{t.nome_pg}"))
+            ok = self.tentar(sql.SQL("CREATE OR REPLACE FUNCTION {}() RETURNS trigger LANGUAGE plpgsql AS $$\n"
+                                     "BEGIN\n{}\n  RETURN NEW;\nEND $$").format(funcao, sql.SQL("\n").join(atribuicoes)),
+                             "Falha ao criar trigger de coluna gerada", t.nome)
+            if ok:
+                nome = self.args.planeador.nome_unico(f"{t.nome_pg}_gerar")
+                self.tentar(sql.SQL("CREATE TRIGGER {} BEFORE INSERT OR UPDATE ON {} FOR EACH ROW "
+                                    "EXECUTE FUNCTION {}()").format(self.ident(nome), self.tab(t), funcao),
+                            "Falha ao criar trigger de coluna gerada", t.nome)
+        if tabelas:
+            print(f"  {len(tabelas)} trigger(s) de colunas geradas criados")
+
     def criar_fks(self) -> None:
         criadas = validadas = 0
         for t in self.esq.tabelas.values():
@@ -1463,12 +1794,20 @@ class Migrador:
             self.criar_pais_em_falta()
             self.acertar_sequencias(silencioso=True)  # os ids criados podem passar o maior id
         self.criar_triggers_on_update()
+        self.criar_triggers_geradas()
         self.criar_fks()
         self.criar_objetos()
         self.pg.execute("ANALYZE")
         for chave, n in sorted(self.contadores.items()):
             alvo, tipo = chave.rsplit(":", 1)
-            texto = {"datas_zero": "data(s) zero passaram a NULL", "nul_removido": "valor(es) com \\0 limpos"}[tipo]
+            texto = {"datas_zero": "data(s) zero, parciais ou inválidas passaram a NULL",
+                     "nul_removido": "valor(es) com \\0 limpos",
+                     "json_nul": "documento(s) JSON sem \\u0000",
+                     "espacos_aparados": "valor(es) sem os espaços do fim",
+                     "utf8_invalido": "valor(es) com UTF-8 inválido (bytes trocados por �)"}[tipo]
+            if tipo == "utf8_invalido":
+                self.rel.add("migracao", "AVISO", "UTF-8 inválido", alvo, f"{n} {texto}")
+                continue
             self.rel.add("migracao", "INFO", "Transformações aplicadas", alvo, f"{n} {texto}")
         self.rel.imprimir_achados("migracao")
 
@@ -1494,7 +1833,7 @@ class Verificador:
     def verificar_colunas(self, t: Tabela, canon: dict[str, str], res: dict) -> bool:
         with self.pg.cursor() as cur:
             cur.execute("SELECT a.attname, format_type(a.atttypid, a.atttypmod), NOT a.attnotnull, "
-                        "a.atthasdef OR a.attidentity <> '', co.collname FROM pg_attribute a "
+                        "a.atthasdef OR a.attidentity <> '', co.collname, a.attgenerated FROM pg_attribute a "
                         "LEFT JOIN pg_collation co ON co.oid = a.attcollation AND co.collname <> 'default' "
                         "WHERE a.attrelid = %s::regclass AND a.attnum > 0 AND NOT a.attisdropped",
                         (sql.Identifier(self.args.esquema, t.nome_pg).as_string(self.pg),))
@@ -1506,7 +1845,11 @@ class Verificador:
                 self.rel.add("verificacao", "ERRO", "Coluna em falta", alvo, "não existe no PostgreSQL.")
                 ok = False
                 continue
-            tipo, nula, tem_padrao, colacao = pg_cols.pop(c.nome_pg)
+            tipo, nula, tem_padrao, colacao, gerada = pg_cols.pop(c.nome_pg)
+            if c.geracao_modo == "stored" and gerada != "s":
+                self.rel.add("verificacao", "ERRO", "Coluna gerada em falta", alvo,
+                             "devia ser GENERATED ALWAYS AS (...) STORED no PostgreSQL.")
+                ok = False
             if familia(c.tipo_pg) == "texto" and colacao != c.colacao_pg:
                 self.rel.add("verificacao", "ERRO", "Comparação de texto diferente do MySQL", alvo,
                              f"collation {colacao or 'padrão'} no PostgreSQL, esperada {c.colacao_pg or 'padrão'} "
@@ -1907,6 +2250,9 @@ def ler_argumentos(argv=None):
     p.add_argument("--comparacao-texto", choices=["mysql", "exata"], default="mysql",
                    help="mysql (padrão): colunas _ci ignoram maiúsculas e acentos como no MySQL; "
                         "exata: comparação normal do PostgreSQL ('Ana' <> 'ana')")
+    p.add_argument("--aparar-espacos", action="store_true",
+                   help="tira os espaços do fim nas colunas de chave e índice com collation PAD SPACE, "
+                        "para '=', UNIQUE e FKs compararem como no MySQL ('x' = 'x ')")
     p.add_argument("--sem-comparar-linhas", action="store_true", help="na verificação, só conta linhas")
     p.add_argument("--amostras", type=int, default=20, help="diferenças de exemplo por tabela (padrão: 20)")
     p.add_argument("--relatorios", default="relatorios", help="pasta dos relatórios (padrão: ./relatorios)")
