@@ -44,6 +44,7 @@ FLAGS = {
     "sem_booleanos": "--sem-booleanos",
     "enum_sem_check": "--enum-sem-check",
     "manter_maiusculas": "--manter-maiusculas",
+    "aparar_espacos": "--aparar-espacos",
     "sem_comparar_linhas": "--sem-comparar-linhas",
 }
 ESCOLHAS = {"orfaos": ("criar-pais", "not-valid"), "comparacao_texto": ("mysql", "exata")}

@@ -162,6 +162,7 @@ class Tradutor:
         self.tipos = {t.lower(): cols for t, cols in tipos.items()}
         self.nomes_pg = {t.lower(): n for t, n in nomes_pg.items()}
         self.minusculas = minusculas
+        self._colunas_soltas = False
 
     # ---------------------------- SQL e expressões ---------------------------- #
     def _tipo_coluna(self, col: exp.Column, tabela_new: str | None) -> str | None:
@@ -169,6 +170,9 @@ class Tradutor:
         if tab in ("new", "old"):
             return self.tipos.get((tabela_new or "").lower(), {}).get(nome)
         escopo = col.find_ancestor(exp.Select, exp.Update, exp.Delete, exp.Insert)
+        if escopo is None and not tab and self._colunas_soltas:
+            # expressão de uma coluna gerada: os nomes soltos são colunas da própria tabela
+            return self.tipos.get((tabela_new or "").lower(), {}).get(nome)
         tabelas: dict[str, str] = {}
         if escopo is not None:
             for t in escopo.find_all(exp.Table):
@@ -234,6 +238,62 @@ class Tradutor:
             raise NaoSuportado(f"expressão não reconhecida: {texto.strip()[:80]} ({str(e).splitlines()[0]})")
         return self._ajustar(arvore, tabela_new, tipo_alvo).sql(dialect="postgres", normalize_functions=False)
 
+    def expressao_coluna(self, texto: str, tabela: str, prefixo_new: bool = False, escapado: bool = True) -> str:
+        """Expressão de uma coluna gerada ou de um valor por defeito (information_schema do MySQL).
+
+        O resultado tem de ser aceite pelo PostgreSQL numa coluna GENERATED, que só aceita
+        funções imutáveis:
+          - _utf8mb4'x' → 'x';
+          - CAST(x AS CHAR [CHARSET ...]) → CAST(x AS TEXT);
+          - CONCAT(a, b) → a::text || b::text (o || com um número não é imutável; e, como no
+            MySQL, o resultado é NULL se um dos valores for NULL).
+        Com prefixo_new=True, as colunas ficam NEW.coluna (para o corpo de um trigger).
+        """
+        if escapado:  # MySQL 8 (o MariaDB não escapa)
+            texto = desescapar_information_schema(texto)
+        try:
+            arvore = sqlglot.parse_one(texto, read="mysql")
+        except sqlglot.errors.ParseError as e:
+            raise NaoSuportado(f"expressão não reconhecida: {texto.strip()[:80]} ({str(e).splitlines()[0]})")
+
+        def texto_pg(no: exp.Expression) -> exp.Expression:
+            if isinstance(no, exp.Literal) and no.is_string:
+                return no
+            if isinstance(no, exp.Cast) and no.to.this in (exp.DataType.Type.TEXT,):
+                return no
+            return exp.Cast(this=no, to=exp.DataType.build("text"))
+
+        def troca(no):
+            if isinstance(no, exp.Introducer):
+                return no.expression
+            if isinstance(no, exp.Cast) and no.to.this in (exp.DataType.Type.CHARACTER_SET, exp.DataType.Type.CHAR,
+                                                            exp.DataType.Type.NCHAR):
+                if not no.to.expressions:  # CHAR sem tamanho: texto inteiro (com tamanho, o MySQL corta)
+                    return exp.Cast(this=no.this, to=exp.DataType.build("text"))
+            if isinstance(no, exp.Concat) and not no.args.get("coalesce"):
+                partes = [texto_pg(p) for p in no.expressions]
+                resultado = partes[0]
+                for p in partes[1:]:
+                    resultado = exp.DPipe(this=resultado, expression=p, safe=True)
+                return exp.Paren(this=resultado)
+            if prefixo_new and isinstance(no, exp.Column) and not no.table:
+                return exp.Column(this=no.this, table=exp.to_identifier("new"))
+            return no
+
+        # De baixo para cima, para os CONCAT e _utf8mb4 dentro de outros também serem trocados.
+        raiz = exp.Paren(this=arvore)
+        for no in reversed(list(raiz.walk(bfs=True))):
+            novo = troca(no)
+            if novo is not no:
+                no.replace(novo)
+        arvore = raiz.this
+        self._colunas_soltas = True
+        try:
+            arvore = self._ajustar(arvore, tabela)
+        finally:
+            self._colunas_soltas = False
+        return arvore.sql(dialect="postgres", normalize_functions=False)
+
     def comando_sql(self, texto: str, tabela_new: str | None = None) -> str:
         texto = texto.strip()
         if re.match(r"(?i)call\b", texto):
@@ -267,7 +327,7 @@ class Tradutor:
         if sem_sinal and base in ("int", "integer", "mediumint"):
             return "bigint"
         if sem_sinal and base == "bigint":
-            return "numeric(20)"
+            return "bigint"  # como nas colunas (migrar.py): os valores reais cabem no bigint
         if base in ("enum", "set"):
             return "text"
         try:
@@ -331,6 +391,12 @@ class Tradutor:
 
     def _q(self, nome: str) -> str:
         return f"{_qi(self.esquema)}.{_qi(nome)}"
+
+
+def desescapar_information_schema(texto: str) -> str:
+    """O MySQL 8 mostra as expressões (GENERATION_EXPRESSION, COLUMN_DEFAULT) com as aspas
+    escapadas como se estivessem dentro de uma string: _utf8mb4\\'x\\'. Tira esse nível."""
+    return re.sub(r"\\(['\\])", r"\1", texto)
 
 
 def _qi(nome: str) -> str:
