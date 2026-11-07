@@ -156,12 +156,16 @@ class Tradutor:
     """
 
     def __init__(self, base_mysql: str, esquema: str, tipos: dict[str, dict[str, str]],
-                 nomes_pg: dict[str, str], minusculas: bool) -> None:
+                 nomes_pg: dict[str, str], minusculas: bool, versao_pg: int = 160000) -> None:
         self.base = base_mysql.lower()
         self.esquema = esquema
         self.tipos = {t.lower(): cols for t, cols in tipos.items()}
+        # Nome exato primeiro: no MySQL em Linux, `Tabela` e `tabela` podem ser tabelas diferentes.
+        self.nomes_exatos = dict(nomes_pg)
         self.nomes_pg = {t.lower(): n for t, n in nomes_pg.items()}
         self.minusculas = minusculas
+        self.versao_pg = versao_pg
+        self.notas: list[str] = []  # o que a última tradução de view mudou, para o relatório
         self._colunas_soltas = False
 
     # ---------------------------- SQL e expressões ---------------------------- #
@@ -210,8 +214,14 @@ class Tradutor:
                 db = no.args.get("db")
                 if db is not None and db.name.lower() == self.base:
                     no.set("db", exp.to_identifier(self.esquema) if self.esquema != "public" else None)
-                if isinstance(no, exp.Table) and no.name.lower() in self.nomes_pg:
-                    no.set("this", exp.to_identifier(self.nomes_pg[no.name.lower()]))
+                if isinstance(no, exp.Table) and isinstance(no.this, exp.Identifier):
+                    novo = self.nomes_exatos.get(no.name) or self.nomes_pg.get(no.name.lower())
+                    if novo:
+                        # Com --manter-maiusculas o nome vai entre aspas; sem elas o PostgreSQL
+                        # passava MID_ENTIDADE a mid_entidade, que não existe.
+                        no.set("this", exp.to_identifier(novo, quoted=not self.minusculas))
+                    elif not self.minusculas:
+                        no.this.set("quoted", True)  # outra view, também criada com o nome exato
             if isinstance(no, (exp.EQ, exp.NEQ, exp.NullSafeEQ, exp.NullSafeNEQ)):
                 for a, b in (("this", "expression"), ("expression", "this")):
                     lado, outro = no.args.get(a), no.args.get(b)
@@ -383,14 +393,103 @@ class Tradutor:
         return proc, cron, nome
 
     def view(self, v: View, nome_pg: str) -> str:
+        self.notas = []
         try:
             arvore = sqlglot.parse_one(v.definicao, read="mysql")
         except sqlglot.errors.ParseError as e:
             raise NaoSuportado(f"definição não reconhecida ({str(e).splitlines()[0]})")
-        return f"CREATE OR REPLACE VIEW {self._q(nome_pg)} AS\n{self._ajustar(arvore, None).sql(dialect="postgres", pretty=True, normalize_functions=False)}"
+        self._alias_no_having(arvore)
+        self._completar_agrupamento(arvore)
+        corpo = self._ajustar(arvore, None).sql(dialect="postgres", pretty=True, normalize_functions=False)
+        return f"CREATE OR REPLACE VIEW {self._q(nome_pg)} AS\n{corpo}"
 
     def _q(self, nome: str) -> str:
         return f"{_qi(self.esquema)}.{_qi(nome)}"
+
+    def _alias_no_having(self, arvore: exp.Expression) -> None:
+        """HAVING total > 1, em que total é um alias do SELECT: o MySQL aceita, o PostgreSQL não.
+        Troca o alias pela expressão que ele nomeia (ex.: COUNT(0) > 1)."""
+        trocados = []
+        for sel in list(arvore.find_all(exp.Select)):
+            having = sel.args.get("having")
+            if having is None:
+                continue
+            aliases = {p.alias.lower(): p.this for p in sel.expressions
+                       if isinstance(p, exp.Alias) and not isinstance(p.this, exp.Column)}
+            for col in list(having.find_all(exp.Column)):
+                nome = col.name.lower()
+                if not col.table and nome in aliases and col.find_ancestor(exp.Select) is sel:
+                    col.replace(aliases[nome].copy())
+                    trocados.append(col.name)
+        if trocados:
+            self.notas.append(f"no HAVING, o alias {', '.join(sorted(set(trocados)))} foi trocado pela expressão "
+                              "(o PostgreSQL não aceita aliases do SELECT no HAVING)")
+
+    def _completar_agrupamento(self, arvore: exp.Expression) -> None:
+        """Colunas no SELECT que não estão no GROUP BY nem dentro de uma agregação.
+
+        O MySQL sem ONLY_FULL_GROUP_BY aceita-as e devolve o valor de uma linha qualquer do grupo;
+        o PostgreSQL recusa. ANY_VALUE (PostgreSQL 16+) faz o mesmo que o MySQL; antes do 16
+        usa-se MIN, que também devolve um valor do grupo.
+        """
+        funcao = exp.AnyValue if self.versao_pg >= 160000 else exp.Min
+        envolvidas: list[str] = []
+        for sel in list(arvore.find_all(exp.Select)):
+            grupo = sel.args.get("group")
+            projecoes = sel.expressions
+            # Só conta uma agregação deste SELECT (não de uma subconsulta nem uma função de janela).
+            agrega = any(a.find_ancestor(exp.Select) is sel and a.find_ancestor(exp.Window) is None
+                         for p in projecoes for a in p.find_all(exp.AggFunc))
+            if grupo is None and not agrega:
+                continue
+            chave = lambda e: e.sql(dialect="mysql").lower()  # noqa: E731
+            agrupadas: set[str] = set()
+            aliases_agrupados: set[str] = set()
+            for g in (grupo.expressions if grupo is not None else []):
+                if isinstance(g, exp.Literal) and g.is_int and 0 < int(g.this) <= len(projecoes):
+                    p = projecoes[int(g.this) - 1]
+                    agrupadas.add(chave(p.this if isinstance(p, exp.Alias) else p))
+                    continue
+                if isinstance(g, exp.Column) and not g.table:
+                    aliases_agrupados.add(g.name.lower())
+                agrupadas.add(chave(g))
+            aliases = {p.alias.lower() for p in projecoes if isinstance(p, exp.Alias)}
+
+            def coberta(no: exp.Expression, raiz: exp.Expression) -> bool:
+                """True se no, ou uma expressão que o contém (até à raiz), está no GROUP BY."""
+                atual = no
+                while atual is not None:
+                    if chave(atual) in agrupadas:
+                        return True
+                    if atual is raiz:
+                        return False
+                    atual = atual.parent
+                return False
+
+            def envolver(raiz: exp.Expression) -> None:
+                for col in list(raiz.find_all(exp.Column)):
+                    if col.find_ancestor(exp.Select) is not sel or col.find_ancestor(exp.AggFunc, exp.Window):
+                        continue
+                    if not col.table and col.name.lower() in aliases:
+                        continue  # referência a um alias (ex.: ORDER BY total)
+                    if coberta(col, raiz):
+                        continue
+                    envolvidas.append(col.sql(dialect="mysql"))
+                    col.replace(funcao(this=col.copy()))
+
+            for p in projecoes:
+                if isinstance(p, exp.Alias) and p.alias.lower() in aliases_agrupados:
+                    continue
+                envolver(p.this if isinstance(p, exp.Alias) else p)
+            for parte in ("having", "order"):
+                if sel.args.get(parte) is not None:
+                    envolver(sel.args[parte])
+        if envolvidas:
+            nome = "ANY_VALUE" if funcao is exp.AnyValue else "MIN"
+            self.notas.append(
+                f"{', '.join(sorted(set(envolvidas)))} não estão no GROUP BY: o MySQL devolvia o valor de uma linha "
+                f"qualquer do grupo; ficam em {nome}(), que faz o mesmo. Se a coluna não depender do que está no "
+                "GROUP BY, o valor escolhido pode ser outro")
 
 
 def desescapar_information_schema(texto: str) -> str:

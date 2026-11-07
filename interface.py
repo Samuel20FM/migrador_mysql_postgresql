@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import codecs
+import datetime as dt
 import json
 import os
 import secrets
@@ -44,6 +45,7 @@ FLAGS = {
     "sem_booleanos": "--sem-booleanos",
     "enum_sem_check": "--enum-sem-check",
     "manter_maiusculas": "--manter-maiusculas",
+    "renomear_duplicadas": "--renomear-duplicadas",
     "aparar_espacos": "--aparar-espacos",
     "sem_comparar_linhas": "--sem-comparar-linhas",
 }
@@ -83,6 +85,13 @@ def montar_comando(pedido: dict) -> tuple[list[str], dict]:
         if valor not in validas:
             raise Pedido(f"Valor inválido para {chave}.")
         cmd += ["--" + chave.replace("_", "-"), valor]
+    datas = str(opcoes.get("datas_zero") or "null").strip()
+    try:
+        if datas != "null":
+            dt.date.fromisoformat(datas)
+    except ValueError:
+        raise Pedido("Datas zero: use null ou uma data AAAA-MM-DD.") from None
+    cmd += ["--datas-zero", datas]
     for chave, flag in TEXTOS.items():
         valor = str(opcoes.get(chave) or "").strip()
         if valor:
