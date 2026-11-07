@@ -31,6 +31,7 @@ import decimal
 import getpass
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -189,6 +190,7 @@ class Coluna:
     geracao_pg: str | None = None   # a mesma fórmula em PostgreSQL
     geracao_modo: str = ""          # "stored" (GENERATED ... STORED), "trigger" ou "" (coluna normal)
     aparar: bool = False            # --aparar-espacos: tira os espaços do fim (chaves/índices PAD SPACE)
+    data_substituta: dt.date | None = None  # --datas-zero AAAA-MM-DD: valor que substitui as datas zero
 
     @property
     def unsigned(self) -> bool:
@@ -245,6 +247,12 @@ class Tabela:
     linhas_estimadas: int
     tamanho_bytes: int
     nome_pg: str = ""
+    linhas_contadas: int | None = None  # COUNT(*) feito na validação (TABLE_ROWS é só uma estimativa)
+    bytes_dados: int = 0                # soma de LENGTH() de todos os valores, para a estimativa de tempo
+
+    @property
+    def linhas(self) -> int:
+        return self.linhas_contadas if self.linhas_contadas is not None else self.linhas_estimadas
 
     def coluna(self, nome: str) -> Coluna:
         for c in self.colunas:
@@ -362,6 +370,19 @@ class Relatorio:
         self.ddl: list[str] = []
         self.resumo: dict = {}
         self.traducoes: list = []
+        self.tempos: dict[str, dict] = {}   # fase -> {"estimado": s, "real": s}
+        self.estimativa: dict = {}
+        self.resultado = ""
+        self.opcoes: list[str] = []
+        self.ficheiros: list[tuple[str, str]] = []
+
+    def tempo(self, fase: str, real: float) -> None:
+        self.tempos.setdefault(fase, {})["real"] = round(real, 2)
+        est = self.tempos[fase].get("estimado")
+        txt = f"  Tempo: {duracao(real)}"
+        if est is not None:
+            txt += f" (estimado ~{duracao(est)})"
+        print(txt)
 
     def add(self, fase: str, nivel: str, categoria: str, objeto: str, mensagem: str) -> None:
         self.achados.append(dict(fase=fase, nivel=nivel, categoria=categoria, objeto=objeto, mensagem=mensagem))
@@ -390,10 +411,16 @@ class Relatorio:
         os.makedirs(pasta, exist_ok=True)
         base = os.path.join(pasta, "migracao_" + self.inicio.strftime("%Y%m%d_%H%M%S"))
         dados = dict(inicio=self.inicio.isoformat(timespec="seconds"),
-                     fim=dt.datetime.now().isoformat(timespec="seconds"), resumo=self.resumo,
+                     fim=dt.datetime.now().isoformat(timespec="seconds"), resultado=self.resultado,
+                     opcoes=self.opcoes, resumo=self.resumo, tempos=self.tempos, estimativa=self.estimativa,
                      achados=self.achados, migracao=self.migracao, verificacao=self.verificacao)
         with open(base + ".json", "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=2, default=str)
+        self.ficheiros = [(base + ".json", "todos os dados deste relatório, para ler por programa")]
+        if self.ddl:
+            self.ficheiros.append((base + ".sql", "os comandos SQL executados no PostgreSQL"))
+        if any(d.erro for d in self.traducoes):
+            self.ficheiros.append((base + "_por_rever.sql", "objetos (triggers, procedures, ...) para rever à mão"))
         with open(base + ".md", "w", encoding="utf-8") as f:
             f.write(self._markdown(dados))
         if self.ddl:
@@ -412,29 +439,65 @@ class Relatorio:
         return base + ".md", base + ".json"
 
     def _markdown(self, d: dict) -> str:
-        linhas = [f"# Relatório de migração MySQL → PostgreSQL", "",
-                  f"Início: {d['inicio']} · Fim: {d['fim']}", ""]
-        for k, v in d["resumo"].items():
-            linhas.append(f"- **{k}:** {v}")
-        for fase in ("validacao", "migracao", "verificacao"):
-            itens = [a for a in d["achados"] if a["fase"] == fase]
+        def celula(texto) -> str:
+            return str(texto).replace("|", "\\|").replace("\n", " ")
+
+        fases = {"validacao": "validação", "migracao": "migração", "verificacao": "verificação"}
+        inicio, fim = dt.datetime.fromisoformat(d["inicio"]), dt.datetime.fromisoformat(d["fim"])
+        L = ["# Relatório de migração MySQL → PostgreSQL", ""]
+        if self.resultado:
+            L += [f"**Resultado:** {self.resultado}", ""]
+        L += [f"- **Início:** {inicio:%Y-%m-%d %H:%M:%S}", f"- **Fim:** {fim:%Y-%m-%d %H:%M:%S}",
+              f"- **Duração:** {duracao((fim - inicio).total_seconds())}"]
+        L += [f"- **{k}:** {v}" for k, v in d["resumo"].items()]
+        if self.opcoes:
+            L.append(f"- **Opções:** `{' '.join(self.opcoes)}`")
+
+        if self.tempos:
+            L += ["", "## Tempo", "", "| Fase | Estimado | Real |", "|---|---:|---:|"]
+            for fase, v in self.tempos.items():
+                est = f"~{duracao(v['estimado'])}" if "estimado" in v else "–"
+                real = duracao(v["real"]) if "real" in v else "não executada"
+                L.append(f"| {NOMES_FASES.get(fase, fase)} | {est} | {real} |")
+            cal = self.estimativa.get("calibracao")
+            if cal:
+                L += ["", f"Velocidade {cal['nota']}. Como a estimativa é calculada: `docs/tecnico.md`, "
+                          "secção *Estimativa de tempo*."]
+
+        for nivel, nome in (("ERRO", "Erros"), ("AVISO", "Avisos — rever antes de usar a base"),
+                            ("INFO", "Informação — o que foi convertido e como")):
+            itens = [a for a in d["achados"] if a["nivel"] == nivel]
             if not itens:
                 continue
-            linhas += ["", f"## Achados — {fase}", "", "| Nível | Categoria | Objeto | Mensagem |", "|---|---|---|---|"]
+            L += ["", f"## {nome} ({len(itens)})"]
+            grupos: dict[tuple[str, str], list[dict]] = {}
             for a in itens:
-                msg = a["mensagem"].replace("|", "\\|").replace("\n", " ")
-                linhas.append(f"| {a['nivel']} | {a['categoria']} | `{a['objeto']}` | {msg} |")
-        if d["verificacao"]:
-            linhas += ["", "## Verificação por tabela", "",
-                       "| Tabela | Linhas MySQL | Linhas PG | Iguais | Diferentes | Em falta | A mais "
-                       "| Criadas p/ FK | Estado |",
-                       "|---|---:|---:|---:|---:|---:|---:|---:|---|"]
-            for t, v in d["verificacao"].items():
-                linhas.append(f"| {t} | {v.get('linhas_mysql')} | {v.get('linhas_pg')} | {v.get('iguais', '-')} | "
-                              f"{v.get('diferentes', '-')} | {v.get('em_falta', '-')} | {v.get('a_mais', '-')} | "
-                              f"{v.get('criados', 0)} | "
-                              f"{'OK' if v.get('ok') else 'FALHOU'} |")
-        return "\n".join(linhas) + "\n"
+                grupos.setdefault((a["fase"], a["categoria"]), []).append(a)
+            for (fase, cat), lista in grupos.items():
+                L += ["", f"### {cat} ({len(lista)}, {fases.get(fase, fase)})", ""]
+                L += [f"- `{a['objeto']}`: {a['mensagem'].replace(chr(10), ' ')}" for a in lista]
+
+        nomes = list(dict.fromkeys([*d["migracao"], *d["verificacao"]]))
+        if nomes:
+            L += ["", "## Tabelas", "",
+                  "| Tabela | Linhas MySQL | Linhas PG | Cópia | Iguais | Diferentes | Em falta | A mais "
+                  "| Criadas p/ FK | Estado |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|"]
+            for t in nomes:
+                m, v = d["migracao"].get(t, {}), d["verificacao"].get(t, {})
+                copia = duracao(m["segundos"]) if "segundos" in m else "–"
+                if v:
+                    estado = "OK" if v.get("ok") else "**DIFERENTE**"
+                else:
+                    estado = "copiada" if m.get("estado") == "ok" else "**ERRO**"
+                L.append(f"| {celula(t)} | {v.get('linhas_mysql', '–')} | {v.get('linhas_pg', m.get('linhas', '–'))} "
+                         f"| {copia} | {v.get('iguais', '–')} | {v.get('diferentes', '–')} | {v.get('em_falta', '–')} "
+                         f"| {v.get('a_mais', '–')} | {v.get('criados', 0)} | {estado} |")
+
+        if self.ficheiros:
+            L += ["", "## Ficheiros desta execução", ""]
+            L += [f"- `{os.path.basename(p)}`: {o}" for p, o in self.ficheiros]
+        return "\n".join(L) + "\n"
 
 
 # --------------------------------------------------------------------------- #
@@ -524,14 +587,21 @@ def estatisticas_tabela(con, t: Tabela, usar_bool: bool,
         elif c.tipo_dado == "bigint" and c.unsigned:
             exprs.append((c.nome, "acima_bigint", f"SUM({q} > {BIGINT_MAX})"))
     resultado = {c.nome: Estatisticas() for c in t.colunas}
-    if not exprs:
-        return resultado
+    # Na mesma leitura: linhas exatas e bytes de dados, usados na estimativa de tempo.
+    tamanhos = " + ".join(f"COALESCE(LENGTH({qm(c.nome)}), 0)" for c in t.colunas) or "0"
+    extra = "".join(", " + e for _, _, e in exprs)
     with con.cursor() as cur:
-        cur.execute(f"SELECT {', '.join(e for _, _, e in exprs)} FROM {qm(t.nome)}")
+        cur.execute(f"SELECT COUNT(*), COALESCE(SUM({tamanhos}), 0){extra} FROM {qm(t.nome)}")
         valores = cur.fetchone()
-    for (col, campo, _), v in zip(exprs, valores):
+    t.linhas_contadas, t.bytes_dados = int(valores[0]), int(valores[1] or 0)
+    for (col, campo, _), v in zip(exprs, valores[2:]):
         setattr(resultado[col], campo, int(v or 0))
     return resultado
+
+
+def texto_data(d: dt.date, c: Coluna) -> str:
+    """A data substituta escrita como o tipo da coluna a mostra."""
+    return d.isoformat() if c.tipo_dado == "date" else f"{d.isoformat()} 00:00:00"
 
 
 def familia(tipo_pg: str | None) -> str:
@@ -691,12 +761,23 @@ class Planeador:
             return sql.SQL(str(int(d[2:-1] or "0", 2)))
         if c.conversao in ("data", "data_tz"):
             if d.startswith("0000-00-00"):
-                # A data zero não existe no PostgreSQL. Faz-se o mesmo que nos dados: passa a NULL.
-                # Sem valor por defeito, uma coluna NOT NULL recusaria os INSERT que o omitem.
+                # A data zero não existe no PostgreSQL. Faz-se o mesmo que nos dados: passa a NULL,
+                # ou à data de --datas-zero. Sem valor por defeito, uma coluna NOT NULL recusaria
+                # os INSERT que o omitem; por isso, com NULL, a coluna passa a aceitar NULL.
+                sub = self.args.datas_zero
+                if sub:
+                    c.data_substituta = sub
+                    v = texto_data(sub, c)
+                    self.rel.add("validacao", "AVISO", "Data zero por defeito → data substituta", alvo,
+                                 f"o PostgreSQL não tem a data {d!r}; o valor por defeito passa a {v!r} "
+                                 f"(--datas-zero) e a coluna mantém-se {'NOT NULL' if not c.nula_pg else 'como está'}. "
+                                 f"Na aplicação, troque = '0000-00-00' por = '{v}'.")
+                    return sql.Literal(v)
                 extra = ""
                 if not c.nula_pg:
                     c.nula_pg = True
-                    extra = " A coluna era NOT NULL e passa a aceitar NULL."
+                    extra = (" A coluna era NOT NULL e passa a aceitar NULL (para a manter NOT NULL, "
+                             "use --datas-zero 0001-01-01).")
                 self.rel.add("validacao", "AVISO", "Data zero por defeito → NULL", alvo,
                              f"o PostgreSQL não tem a data {d!r}; o valor por defeito passa a NULL, como as datas "
                              f"zero dos dados.{extra} Na aplicação, troque = '0000-00-00' por IS NULL.")
@@ -717,8 +798,21 @@ class Planeador:
             for fk in t.fks:
                 self.colunas_fk.update((t.nome, c) for c in fk.colunas)
                 self.colunas_fk.update((fk.tabela_ref, c) for c in fk.colunas_ref)
-        for t in esq.tabelas.values():
+        # Primeiro as tabelas cujo nome já está em minúsculas: ficam com ele. As outras com o
+        # mesmo nome em minúsculas recebem _2, _3... (--renomear-duplicadas) ou dão erro mais abaixo.
+        por_nome: dict[str, str] = {}
+        for t in sorted(esq.tabelas.values(), key=lambda t: t.nome != self.nome_pg(t.nome)):
             t.nome_pg = self.nome_pg(t.nome)
+            if t.nome_pg in por_nome and self.args.renomear_duplicadas:
+                base, i = t.nome_pg, 2
+                while f"{base}_{i}" in self.nomes_usados or f"{base}_{i}" in {self.nome_pg(n) for n in esq.tabelas}:
+                    i += 1
+                t.nome_pg = f"{base}_{i}"
+                self.rel.add("validacao", "AVISO", "Tabela renomeada (nome repetido em minúsculas)", t.nome,
+                             f"no PostgreSQL ficaria igual a {por_nome[base]} ('{base}'); passa a '{t.nome_pg}' "
+                             "(--renomear-duplicadas). As views e rotinas migradas já usam o nome novo; o SQL da "
+                             "aplicação que use esta tabela tem de ser alterado.")
+            por_nome.setdefault(t.nome_pg, t.nome)
             self.nomes_usados.add(t.nome_pg)
         renomeados = 0
         for t in esq.tabelas.values():
@@ -755,10 +849,23 @@ class Planeador:
                 if c.conversao == "geom":
                     self.rel.add("validacao", "INFO", "Coluna espacial (PostGIS)", alvo,
                                  f"{c.tipo_coluna} → {c.tipo_pg}.")
+                if c.conversao in ("data", "data_tz"):
+                    c.data_substituta = self.args.datas_zero
                 if est.datas_sem_valor:
-                    if not c.nula:
-                        c.nula_pg = True
-                    extra = " A coluna é NOT NULL no MySQL e fica a aceitar NULL." if not c.nula else ""
+                    sub = self.args.datas_zero
+                    if sub:
+                        destino = texto_data(sub, c)
+                        extra = (f" A coluna mantém-se {'NOT NULL' if not c.nula else 'como está'} "
+                                 f"(--datas-zero {sub.isoformat()}); na aplicação, troque = '0000-00-00' "
+                                 f"por = '{destino}'.")
+                    else:
+                        destino = "NULL"
+                        if not c.nula:
+                            c.nula_pg = True
+                            extra = (" A coluna é NOT NULL no MySQL e passa a aceitar NULL. Para a manter "
+                                     "NOT NULL, use --datas-zero 0001-01-01 (grava essa data em vez de NULL).")
+                        else:
+                            extra = " Alternativa: --datas-zero 0001-01-01 grava essa data em vez de NULL."
                     for n, cat, explic in (
                             (est.datas_zero, "Datas zero (0000-00-00)", ""),
                             (est.datas_parciais, "Datas parciais (ex.: 2024-05-00)",
@@ -766,7 +873,8 @@ class Planeador:
                             (est.datas_invalidas, "Datas inválidas (ex.: 2023-02-31)",
                              " O dia não existe nesse mês (gravadas com ALLOW_INVALID_DATES).")):
                         if n:
-                            self.rel.add("validacao", "AVISO", cat, alvo, f"{n} linha(s) passam a NULL.{explic}{extra}")
+                            self.rel.add("validacao", "AVISO", cat, alvo,
+                                         f"{n} linha(s) passam a {destino}.{explic}{extra}")
                 if est.json_nul:
                     self.rel.add("validacao", "AVISO", "\\u0000 em JSON", alvo,
                                  f"{est.json_nul} linha(s); o jsonb do PostgreSQL não aceita \\u0000 e ele será removido.")
@@ -827,8 +935,11 @@ class Planeador:
         nomes_t = Counter(t.nome_pg for t in esq.tabelas.values())
         for n, k in nomes_t.items():
             if k > 1:
+                iguais = ", ".join(t.nome for t in esq.tabelas.values() if t.nome_pg == n)
                 self.rel.add("validacao", "ERRO", "Tabelas com o mesmo nome em minúsculas", n,
-                             f"aparece {k} vezes; use --manter-maiusculas.")
+                             f"{iguais} ficariam todas '{n}' no PostgreSQL. Use --renomear-duplicadas (a segunda "
+                             f"passa a '{n}_2') ou --manter-maiusculas (mantém os nomes, que a aplicação passa a ter "
+                             "de escrever entre aspas). Se uma delas já não é usada, apague-a no MySQL antes.")
             if len(n.encode()) > 63:
                 self.rel.add("validacao", "ERRO", "Nome demasiado longo", n,
                              "nomes de tabela no PostgreSQL têm no máximo 63 bytes.")
@@ -962,7 +1073,7 @@ def avisar_nomes_reservados(esq: EsquemaMySQL, con_pg, rel: Relatorio) -> None:
         if nomes:
             rel.add("validacao", "AVISO", "Nome reservado no PostgreSQL", t.nome,
                     f"{', '.join(nomes)}: a migração cria-os entre aspas, mas no SQL da aplicação têm de ir "
-                    'entre aspas também (ex.: SELECT "table" FROM ...), senão dá erro de sintaxe.')
+                    f'entre aspas também (ex.: "{nomes[0].removeprefix("tabela ")}"), senão dá erro de sintaxe.')
 
 
 def validar(esq: EsquemaMySQL, con_my, con_pg, args, rel: Relatorio, plan: Planeador,
@@ -1197,7 +1308,8 @@ class Traducao:
 def criar_tradutor(esq: EsquemaMySQL, args) -> objetos.Tradutor:
     tipos = {t.nome: {c.nome.lower(): (c.tipo_pg or "") for c in t.colunas} for t in esq.tabelas.values()}
     nomes = {t.nome: t.nome_pg for t in esq.tabelas.values()}
-    return objetos.Tradutor(args.origem_dados.base, args.esquema, tipos, nomes, not args.manter_maiusculas)
+    return objetos.Tradutor(args.origem_dados.base, args.esquema, tipos, nomes, not args.manter_maiusculas,
+                            getattr(args, "versao_pg", 160000))
 
 
 def traduzir_objetos(esq: EsquemaMySQL, args) -> list[Traducao]:
@@ -1216,9 +1328,13 @@ def traduzir_objetos(esq: EsquemaMySQL, args) -> list[Traducao]:
         tipo = "Função" if r.tipo == "FUNCTION" else "Procedure"
         tentar(Traducao(tipo, r.nome, tr.nome(r.nome), r.corpo, ordem=1),
                lambda d, r=r: d.comandos.append(tr.rotina(r)))
+    def gerar_view(d, v):
+        d.comandos.append(tr.view(v, tr.nome(v.nome)))
+        d.nota = "; ".join(tr.notas)
+
     for v in o.views:
         tentar(Traducao("View", v.nome, tr.nome(v.nome), v.definicao, ordem=2),
-               lambda d, v=v: d.comandos.append(tr.view(v, tr.nome(v.nome))))
+               lambda d, v=v: gerar_view(d, v))
     for t in o.triggers:
         def gerar_trigger(d, t=t):
             funcao, trigger = tr.trigger(t, esq.tabelas[t.tabela].nome_pg)
@@ -1282,13 +1398,16 @@ def conversor(c: Coluna, contadores: Counter, chave: str):
         return lambda v: None if v is None else int.from_bytes(v, "big")
     if k in ("data", "data_tz"):
         tz = k == "data_tz"
+        sub = c.data_substituta  # None: as datas zero passam a NULL
+        if sub is not None and c.tipo_dado != "date":
+            sub = dt.datetime.combine(sub, dt.time(), UTC if tz else None)
 
         def data(v):
             if v is None:
                 return None
             if isinstance(v, str):  # o pymysql devolve as datas zero, parciais e inválidas como texto
                 contadores[chave + ":datas_zero"] += 1
-                return None
+                return sub
             return v.replace(tzinfo=UTC) if tz and isinstance(v, dt.datetime) else v
         return data
     if k == "hora":
@@ -1407,6 +1526,20 @@ class Migrador:
         self.esq, self.args, self.rel, self.pg = esq, args, rel, con_pg
         self.uniques_extra = uniques_extra
         self.contadores: Counter = Counter()
+        self.prev_tabela: dict[str, float] = rel.estimativa.get("copia_tabela", {})
+        self.feito_real = 0.0      # segundos reais das tabelas já copiadas
+        self.feito_previsto = 0.0  # o que a estimativa previa para essas tabelas
+        self.por_copiar = sum(self.prev_tabela.values())
+
+    def falta_copia(self, t: Tabela, linhas: int, decorrido: float) -> str:
+        """Tempo restante desta tabela e da cópia toda, corrigido pela velocidade real até agora."""
+        total = max(t.linhas, linhas)
+        if decorrido < 1 or not linhas:
+            return ""
+        falta_tab = (total - linhas) * decorrido / linhas
+        fator = self.feito_real / self.feito_previsto if self.feito_previsto > 1 else 1.0
+        resto = self.por_copiar - self.prev_tabela.get(t.nome, 0.0)
+        return f"  faltam ~{duracao(falta_tab)} · cópia toda ~{duracao(falta_tab + fator * resto)}"
 
     def ident(self, *nomes: str) -> sql.Identifier:
         return sql.Identifier(*nomes)
@@ -1496,8 +1629,9 @@ class Migrador:
                         for linha in lote:
                             cp.write_row([f(v) for f, v in zip(convs, linha)])
                         linhas += len(lote)
-                        total = max(t.linhas_estimadas, linhas)
-                        progresso(f"  {t.nome[:40]:<40} {linhas:>10}/{total}")
+                        total = max(t.linhas, linhas)
+                        progresso(f"  {t.nome[:40]:<40} {linhas:>10}/{total}"
+                                  f"{self.falta_copia(t, linhas, time.time() - inicio)}")
             estado = "ok"
             limpar_progresso()
             print(f"  {t.nome[:40]:<40} {linhas:>10} linhas  {cor('ok', 'OK')} ({time.time() - inicio:.1f}s)")
@@ -1509,7 +1643,14 @@ class Migrador:
             self.rel.add("migracao", "ERRO", "Falha ao copiar dados", t.nome, msg)
         finally:
             my.close()
-        self.rel.migracao[t.nome] = dict(linhas=linhas, estado=estado, segundos=round(time.time() - inicio, 2))
+        segundos = time.time() - inicio
+        previsto = self.prev_tabela.get(t.nome)
+        self.rel.migracao[t.nome] = dict(linhas=linhas, estado=estado, segundos=round(segundos, 2),
+                                         estimado=round(previsto, 2) if previsto is not None else None)
+        if previsto is not None:
+            self.feito_real += segundos
+            self.feito_previsto += previsto
+            self.por_copiar -= previsto
 
     def criar_chaves_e_indices(self) -> None:
         for t in self.esq.tabelas.values():
@@ -1784,12 +1925,17 @@ class Migrador:
 
     def executar_tudo(self) -> None:
         titulo("Fase 2 — Migração")
+        inicio = time.time()
         self.criar_tabelas()
         print("  A copiar dados (sem FKs ainda, por isso nada bloqueia a cópia):")
         for t in self.esq.tabelas.values():
             self.copiar_tabela(t)
+        self.rel.tempo("copia", time.time() - inicio)
+        inicio = time.time()
         self.criar_chaves_e_indices()
         self.acertar_sequencias()
+        self.rel.tempo("indices", time.time() - inicio)
+        inicio = time.time()
         if self.args.orfaos == "criar-pais":
             self.criar_pais_em_falta()
             self.acertar_sequencias(silencioso=True)  # os ids criados podem passar o maior id
@@ -1798,15 +1944,20 @@ class Migrador:
         self.criar_fks()
         self.criar_objetos()
         self.pg.execute("ANALYZE")
+        self.rel.tempo("fks", time.time() - inicio)
         for chave, n in sorted(self.contadores.items()):
             alvo, tipo = chave.rsplit(":", 1)
-            texto = {"datas_zero": "data(s) zero, parciais ou inválidas passaram a NULL",
+            destino = self.args.datas_zero.isoformat() if self.args.datas_zero else "NULL"
+            texto = {"datas_zero": f"data(s) zero, parciais ou inválidas passaram a {destino}",
                      "nul_removido": "valor(es) com \\0 limpos",
                      "json_nul": "documento(s) JSON sem \\u0000",
                      "espacos_aparados": "valor(es) sem os espaços do fim",
                      "utf8_invalido": "valor(es) com UTF-8 inválido (bytes trocados por �)"}[tipo]
             if tipo == "utf8_invalido":
                 self.rel.add("migracao", "AVISO", "UTF-8 inválido", alvo, f"{n} {texto}")
+                continue
+            if tipo == "datas_zero":
+                self.rel.add("migracao", "AVISO", f"Datas zero → {destino}", alvo, f"{n} {texto}")
                 continue
             self.rel.add("migracao", "INFO", "Transformações aplicadas", alvo, f"{n} {texto}")
         self.rel.imprimir_achados("migracao")
@@ -2119,9 +2270,16 @@ class Verificador:
             if isinstance(v, dt.timedelta):
                 return (dt.datetime.min + v).time()
             return v
-        with self.my.cursor() as cur:
-            cur.execute(f"SELECT * FROM {qm(d.alvo)}")
-            c_my = Counter(tuple(norm(v) for v in r) for r in cur.fetchall())
+        try:
+            with self.my.cursor() as cur:
+                cur.execute(f"SELECT * FROM {qm(d.alvo)}")
+                c_my = Counter(tuple(norm(v) for v in r) for r in cur.fetchall())
+        except pymysql.Error as e:
+            # Ex.: o DEFINER da view não existe neste MySQL (comum num dump restaurado noutro servidor).
+            self.rel.add("verificacao", "AVISO", "View não comparada", d.alvo,
+                         f"o MySQL não a deixou consultar ({e.args[-1] if e.args else e}); foi criada no PostgreSQL, "
+                         "mas os dados não foram comparados.")
+            return False
         consulta = sql.SQL("SELECT * FROM {}").format(sql.Identifier(self.args.esquema, d.nome_pg))
         sem_criados = False
         # Os registos-pai criados pela migração não existem no MySQL e mudam o resultado de JOINs.
@@ -2177,6 +2335,7 @@ class Verificador:
 
     def executar_tudo(self) -> bool:
         titulo("Fase 3 — Verificação")
+        inicio_fase = time.time()
         canon = self.tipos_esperados()
         with self.pg.cursor() as cur:
             cur.execute("SELECT tablename FROM pg_tables WHERE schemaname=%s", (self.args.esquema,))
@@ -2205,6 +2364,7 @@ class Verificador:
         self.verificar_fks_e_indices()
         self.verificar_objetos()
         self.verificar_sequencias()
+        self.rel.tempo("verificacao", time.time() - inicio_fase)
         falhas = [t for t, r in self.rel.verificacao.items() if not r["ok"]]
         self.rel.resumo["Tabelas verificadas"] = len(self.rel.verificacao)
         self.rel.resumo["Tabelas com diferenças"] = len(falhas)
@@ -2217,9 +2377,221 @@ class Verificador:
         return not falhas and self.rel.contar("verificacao", "ERRO") == 0
 
 
+
+# --------------------------------------------------------------------------- #
+# Estimativa de tempo
+# --------------------------------------------------------------------------- #
+# Custos de recurso, usados só se a amostra não puder ser medida (ex.: sem permissão para
+# criar tabelas no destino). Ordem de grandeza de um MySQL e PostgreSQL na mesma máquina.
+CUSTO_LINHA_PADRAO = 40e-6    # segundos por linha copiada
+CUSTO_BYTE_PADRAO = 15e-9     # segundos por byte copiado
+CUSTO_INDICE_PADRAO = 4e-8    # segundos por n·log2(n) ao criar um índice
+AMOSTRA_LINHAS = 20000        # linhas lidas por tabela de amostra
+AMOSTRA_SEGUNDOS = 3.0        # tempo máximo de leitura por tabela de amostra
+AMOSTRA_TABELAS = 3           # as maiores tabelas (em bytes) servem de amostra
+
+
+@dataclass
+class Calibracao:
+    """Custos medidos numa amostra real: MySQL -> conversão -> COPY no PostgreSQL."""
+    copia_linha: float = CUSTO_LINHA_PADRAO
+    copia_byte: float = CUSTO_BYTE_PADRAO
+    leitura_linha: float = CUSTO_LINHA_PADRAO / 2   # só ler e converter (usado na verificação)
+    leitura_byte: float = CUSTO_BYTE_PADRAO / 2
+    indice: float = CUSTO_INDICE_PADRAO
+    amostras: list[dict] = field(default_factory=list)
+    medida: bool = False
+    nota: str = ""
+
+
+def duracao(segundos: float) -> str:
+    s = max(0, round(segundos))
+    if s < 60:
+        return f"{s} s"
+    m, s = divmod(s, 60)
+    if m < 60:
+        return f"{m} min {s:02d} s"
+    h, m = divmod(m, 60)
+    return f"{h} h {m:02d} min"
+
+
+def nlogn(n: int) -> float:
+    return n * math.log2(n) if n > 1 else 0.0
+
+
+def ajustar_custos(pontos: list[tuple[int, int, float]], linha0: float, byte0: float) -> tuple[float, float]:
+    """segundos = a·linhas + b·bytes, com a, b >= 0.
+
+    Com duas ou mais amostras de larguras diferentes, mínimos quadrados de (segundos/linha) contra
+    (bytes/linha), pesados pelas linhas. Senão (ou se o ajuste der um custo negativo), mantém a
+    proporção entre os custos de recurso e só os escala para a amostra bater certo.
+    """
+    pontos = [p for p in pontos if p[0] > 0 and p[2] > 0]
+    if not pontos:
+        return linha0, byte0
+    if len(pontos) >= 2:
+        w = [n for n, _, _ in pontos]
+        x = [b / n for n, b, _ in pontos]
+        y = [t / n for n, _, t in pontos]
+        sw = sum(w)
+        mx = sum(wi * xi for wi, xi in zip(w, x)) / sw
+        my = sum(wi * yi for wi, yi in zip(w, y)) / sw
+        sxx = sum(wi * (xi - mx) ** 2 for wi, xi in zip(w, x))
+        if sxx > 0 and max(x) > 1.5 * min(x):
+            b = sum(wi * (xi - mx) * (yi - my) for wi, xi, yi in zip(w, x, y)) / sxx
+            a = my - b * mx
+            if a > 0 and b >= 0:
+                return a, b
+    total = sum(t for _, _, t in pontos)
+    previsto = sum(n * linha0 + b * byte0 for n, b, _ in pontos)
+    fator = total / previsto if previsto else 1.0
+    return linha0 * fator, byte0 * fator
+
+
+def medir_amostra(t: Tabela, args, con_pg, mariadb: bool) -> dict | None:
+    """Copia até AMOSTRA_LINHAS linhas de t para uma tabela de teste (sempre desfeita) e mede."""
+    colunas = [c for c in t.colunas if c.tipo_pg and c.geracao_modo != "stored"]
+    if not colunas:
+        return None
+    convs = [conversor(c, Counter(), "") for c in colunas]
+    linhas: list[list] = []
+    nbytes = 0
+    my = ligar_mysql(args.origem_dados)
+    try:
+        with my.cursor(pymysql.cursors.SSCursor) as cur:
+            inicio = time.perf_counter()
+            cur.execute(f"SELECT {', '.join(select_mysql(c, mariadb) for c in colunas)} FROM {qm(t.nome)} "
+                        f"LIMIT {AMOSTRA_LINHAS}")
+            brutas = []
+            while time.perf_counter() - inicio < AMOSTRA_SEGUNDOS:
+                lote = cur.fetchmany(args.lote)
+                if not lote:
+                    break
+                brutas.extend(lote)
+                linhas.extend([fc(v) for fc, v in zip(convs, linha)] for linha in lote)
+            s_ler = time.perf_counter() - inicio
+    finally:
+        my.close()
+    if not linhas:
+        return None
+    nbytes = sum(tamanho_valor(v) for linha in brutas for v in linha)
+    ddl = sql.SQL(", ").join(sql.SQL("{} {}").format(
+        sql.Identifier(c.nome_pg), sql.SQL("text" if c.conversao == "geom" else c.tipo_pg)) for c in colunas)
+    s_escrever = s_indice = None
+    try:
+        with con_pg.transaction(force_rollback=True), con_pg.cursor() as cur:
+            # Uma tabela normal (com WAL, como a da migração) se der; senão temporária.
+            try:
+                with con_pg.transaction():
+                    cur.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(args.esquema)))
+                    alvo = sql.Identifier(args.esquema, "migr_amostra_tempo")
+                    cur.execute(sql.SQL("CREATE TABLE {} ({})").format(alvo, ddl))
+            except psycopg.Error:
+                alvo = sql.Identifier("migr_amostra_tempo")
+                cur.execute(sql.SQL("CREATE TEMP TABLE {} ({})").format(alvo, ddl))
+            inicio = time.perf_counter()
+            with cur.copy(sql.SQL("COPY {} FROM STDIN").format(alvo)) as cp:
+                for linha in linhas:
+                    cp.write_row(linha)
+            s_escrever = time.perf_counter() - inicio
+            chave = next((c for c in colunas if c.nome in t.pk), None) or next(
+                (c for c in colunas if familia(c.tipo_pg) in ("numero", "data")), None)
+            if chave is not None and len(linhas) > 1000:
+                try:
+                    with con_pg.transaction():
+                        inicio = time.perf_counter()
+                        cur.execute(sql.SQL("CREATE INDEX ON {} ({})").format(alvo, sql.Identifier(chave.nome_pg)))
+                        s_indice = time.perf_counter() - inicio
+                except psycopg.Error:
+                    s_indice = None
+    except psycopg.Error:
+        return None
+    return dict(tabela=t.nome, linhas=len(linhas), bytes=nbytes, s_ler=s_ler, s_escrever=s_escrever,
+                s_indice=s_indice)
+
+
+def calibrar(esq: EsquemaMySQL, args, con_pg) -> Calibracao:
+    cal = Calibracao()
+    candidatas = sorted((t for t in esq.tabelas.values() if t.linhas > 0),
+                        key=lambda t: t.bytes_dados, reverse=True)[:AMOSTRA_TABELAS]
+    for i, t in enumerate(candidatas, 1):
+        progresso(f"  A medir a velocidade: amostra {i}/{len(candidatas)} ({t.nome[:40]})")
+        try:
+            a = medir_amostra(t, args, con_pg, esq.mariadb)
+        except (pymysql.Error, psycopg.Error, ValueError, TypeError):
+            a = None
+        if a:
+            cal.amostras.append(a)
+    limpar_progresso()
+    if not cal.amostras:
+        cal.nota = "sem amostra (valores de referência)"
+        return cal
+    cal.medida = True
+    copia = [(a["linhas"], a["bytes"], a["s_ler"] + a["s_escrever"]) for a in cal.amostras]
+    leitura = [(a["linhas"], a["bytes"], a["s_ler"]) for a in cal.amostras]
+    cal.copia_linha, cal.copia_byte = ajustar_custos(copia, CUSTO_LINHA_PADRAO, CUSTO_BYTE_PADRAO)
+    cal.leitura_linha, cal.leitura_byte = ajustar_custos(leitura, CUSTO_LINHA_PADRAO / 2, CUSTO_BYTE_PADRAO / 2)
+    indices = [a["s_indice"] / nlogn(a["linhas"]) for a in cal.amostras if a["s_indice"]]
+    if indices:
+        cal.indice = sum(indices) / len(indices)
+    n = sum(a["linhas"] for a in cal.amostras)
+    cal.nota = f"medida em {len(cal.amostras)} tabela(s), {n} linha(s)"
+    return cal
+
+
+def estimar(esq: EsquemaMySQL, args, cal: Calibracao) -> dict:
+    """Segundos previstos por fase e por tabela (cópia)."""
+    tabelas = list(esq.tabelas.values())
+    copia = {t.nome: t.linhas * cal.copia_linha + t.bytes_dados * cal.copia_byte for t in tabelas}
+    indices = sum(cal.indice * nlogn(t.linhas) * (len(t.indices) + (1 if t.pk else 0)) for t in tabelas)
+    # Validar uma FK lê a tabela filha e procura cada valor no índice do pai; com criar-pais há
+    # antes uma procura de órfãos com o mesmo custo.
+    fks = sum(cal.indice * nlogn(t.linhas) for t in tabelas for fk in t.fks if not fk.ignorar)
+    if args.orfaos == "criar-pais":
+        fks *= 2
+    if args.sem_comparar_linhas:
+        verificacao = 0.02 * len(tabelas)
+    else:
+        # Lê tudo dos dois lados (o PostgreSQL ao mesmo ritmo que o MySQL), normaliza e compara linha a
+        # linha: 2,5 vezes a leitura do MySQL (medido com 1,3 milhões de linhas).
+        verificacao = sum(2.5 * (t.linhas * cal.leitura_linha + t.bytes_dados * cal.leitura_byte) for t in tabelas)
+    fixo = 0.03 * len(tabelas)  # CREATE TABLE, comentários, ANALYZE, sequências
+    fases = {}
+    if args.modo in ("migrar", "tudo", "validar"):
+        fases["copia"] = sum(copia.values()) + fixo
+        fases["indices"] = indices
+        fases["fks"] = fks
+    if args.modo in ("verificar", "tudo", "validar"):
+        fases["verificacao"] = verificacao + 0.01 * len(tabelas)
+    return dict(fases=fases, copia_tabela=copia)
+
+
+NOMES_FASES = {"validacao": "Validação", "copia": "Cópia dos dados", "indices": "Chaves primárias e índices",
+               "fks": "FKs, triggers e objetos", "verificacao": "Verificação"}
+
+
+def imprimir_estimativa(est: dict, cal: Calibracao, esq: EsquemaMySQL) -> None:
+    linhas = sum(t.linhas for t in esq.tabelas.values())
+    mb = sum(t.bytes_dados for t in esq.tabelas.values()) / 1e6
+    print(f"\n  Estimativa de tempo ({linhas} linhas, {mb:.1f} MB de dados; velocidade {cal.nota}):")
+    for fase, seg in est["fases"].items():
+        print(f"    {NOMES_FASES[fase]:<28} ~{duracao(seg)}")
+    total = sum(est["fases"].values())
+    print(f"    {'Total':<28} ~{duracao(total)}  (margem: entre ~{duracao(total * 0.6)} e ~{duracao(total * 1.8)})")
+
+
 # --------------------------------------------------------------------------- #
 # Programa principal
 # --------------------------------------------------------------------------- #
+def opcao_datas_zero(v: str) -> dt.date | None:
+    if v.strip().lower() == "null":
+        return None
+    try:
+        return dt.date.fromisoformat(v.strip())
+    except ValueError:
+        raise argparse.ArgumentTypeError("use null ou uma data AAAA-MM-DD, ex.: 0001-01-01") from None
+
+
 def ler_argumentos(argv=None):
     p = argparse.ArgumentParser(
         description="Migra uma base MySQL para PostgreSQL com validação prévia e verificação linha a linha.",
@@ -2242,6 +2614,9 @@ def ler_argumentos(argv=None):
     p.add_argument("--sem-booleanos", action="store_true", help="tinyint(1) fica smallint em vez de boolean")
     p.add_argument("--enum-sem-check", action="store_true", help="ENUM vira varchar sem CHECK com os valores")
     p.add_argument("--manter-maiusculas", action="store_true", help="não passa os nomes para minúsculas")
+    p.add_argument("--renomear-duplicadas", action="store_true",
+                   help="tabelas cujo nome só difere nas maiúsculas (Tabela e tabela): a segunda fica tabela_2 "
+                        "em vez de parar a validação com erro")
     p.add_argument("--orfaos", choices=["criar-pais", "not-valid"], default="criar-pais",
                    help="registos órfãos: criar-pais (padrão) insere no pai as chaves em falta antes da FK, "
                         "e a FK fica válida; not-valid deixa os dados como estão e cria a FK NOT VALID")
@@ -2253,10 +2628,27 @@ def ler_argumentos(argv=None):
     p.add_argument("--aparar-espacos", action="store_true",
                    help="tira os espaços do fim nas colunas de chave e índice com collation PAD SPACE, "
                         "para '=', UNIQUE e FKs compararem como no MySQL ('x' = 'x ')")
+    p.add_argument("--datas-zero", type=opcao_datas_zero, default=None, metavar="null|AAAA-MM-DD",
+                   help="datas zero, parciais ou inválidas (0000-00-00, 2024-05-00, 2023-02-31): null (padrão) "
+                        "grava NULL e as colunas NOT NULL passam a aceitar NULL; uma data (ex.: 0001-01-01) "
+                        "grava essa data e as colunas ficam NOT NULL")
     p.add_argument("--sem-comparar-linhas", action="store_true", help="na verificação, só conta linhas")
     p.add_argument("--amostras", type=int, default=20, help="diferenças de exemplo por tabela (padrão: 20)")
     p.add_argument("--relatorios", default="relatorios", help="pasta dos relatórios (padrão: ./relatorios)")
     return p.parse_args(argv)
+
+
+def opcoes_sem_ligacoes(argv: list[str]) -> list[str]:
+    """As opções usadas, sem --origem/--destino (os URLs podem levar a senha)."""
+    opcoes, saltar = [], False
+    for a in argv:
+        if saltar:
+            saltar = False
+        elif a in ("--origem", "--destino"):
+            saltar = True
+        elif not a.startswith(("--origem=", "--destino=")):
+            opcoes.append(a)
+    return opcoes
 
 
 def main(argv=None) -> int:
@@ -2264,6 +2656,8 @@ def main(argv=None) -> int:
     args.origem_dados = ler_conexao(args.origem, "origem (MySQL)", 3306, ("mysql",))
     args.destino_dados = ler_conexao(args.destino, "destino (PostgreSQL)", 5432, ("postgresql", "postgres"))
     rel = Relatorio()
+    rel.opcoes = opcoes_sem_ligacoes(sys.argv[1:] if argv is None else argv)
+    rel.resumo["Modo"] = args.modo
     rel.resumo["Origem"] = "mysql://" + args.origem_dados.descricao()
     rel.resumo["Destino"] = f"postgresql://{args.destino_dados.descricao()} (esquema {args.esquema})"
 
@@ -2285,13 +2679,25 @@ def main(argv=None) -> int:
         esq = ler_esquema_mysql(con_my, args.origem_dados.base, incluir, excluir)
         if not esq.tabelas:
             print(cor("Nenhuma tabela para migrar.", "ERRO"))
+            codigo = 2
             return 2
         uniques_extra: dict[str, list[list[str]]] = {}
         args.planeador = Planeador(args, rel, esq.mariadb)
+        inicio = time.time()
         validar(esq, con_my, con_pg, args, rel, args.planeador, uniques_extra)
         rel.traducoes = getattr(args, "traducoes", [])
         erros = rel.contar("validacao", "ERRO")
         rel.resumo["Validação"] = f"{erros} erro(s), {rel.contar('validacao', 'AVISO')} aviso(s)"
+        if not erros or args.forcar or args.modo == "validar":
+            cal = calibrar(esq, args, con_pg)
+            rel.estimativa = estimar(esq, args, cal)
+            rel.estimativa["calibracao"] = dict(nota=cal.nota, amostras=cal.amostras, copia_linha=cal.copia_linha,
+                                                copia_byte=cal.copia_byte, leitura_linha=cal.leitura_linha,
+                                                leitura_byte=cal.leitura_byte, indice=cal.indice)
+            for fase, seg in rel.estimativa["fases"].items():
+                rel.tempos.setdefault(fase, {})["estimado"] = round(seg, 2)
+            imprimir_estimativa(rel.estimativa, cal, esq)
+        rel.tempos = {"validacao": {"real": round(time.time() - inicio, 2)}, **rel.tempos}
 
         if args.modo in ("migrar", "tudo"):
             if erros and not args.forcar:
@@ -2303,6 +2709,7 @@ def main(argv=None) -> int:
                               f"(esquema {args.esquema})? [s/N] ").strip().lower()
                     if r not in ("s", "sim", "y"):
                         print("Cancelado.")
+                        codigo = -1
                         return 0
                 Migrador(esq, args, rel, con_pg, uniques_extra).executar_tudo()
                 rel.resumo["Migração"] = f"{rel.contar('migracao', 'ERRO')} erro(s)"
@@ -2314,22 +2721,30 @@ def main(argv=None) -> int:
     except KeyboardInterrupt:
         print(cor("\nInterrompido.", "ERRO"))
         codigo = 130
+    except Exception as e:
+        # Um erro inesperado não pode deixar o relatório a dizer que correu tudo bem.
+        rel.add("migracao" if rel.migracao else "validacao", "ERRO", "Erro inesperado do migrador",
+                type(e).__name__, f"{e}. O relatório está incompleto; o erro completo aparece no terminal.")
+        codigo = 4
+        raise
     finally:
+        avisos = sum(1 for a in rel.achados if a["nivel"] == "AVISO")
+        resto = f" ({avisos} aviso(s) para rever)." if avisos else "."
+        if codigo == 0 and args.modo == "validar":
+            resultado, tipo = "Validação concluída sem erros" + resto, "OK"
+        elif codigo == 0:
+            resultado, tipo = "Concluído: os dados no PostgreSQL são iguais aos do MySQL" + resto, "OK"
+        else:
+            resultado, tipo = {1: "Concluído com diferenças ou erros.", 2: "Parado na validação.",
+                               130: "Interrompido.", -1: "Cancelado antes de migrar.",
+                               4: "Parou com um erro inesperado do migrador (ver o fim do relatório)."}[codigo], "ERRO"
+        rel.resultado = resultado
         md, js = rel.gravar(args.relatorios)
         con_my.close()
         con_pg.close()
 
     titulo("Resultado")
-    avisos = sum(1 for a in rel.achados if a["nivel"] == "AVISO")
-    if codigo == 0 and args.modo == "validar":
-        texto = cor("Validação concluída sem erros", "OK") + (f" ({avisos} aviso(s) para rever)." if avisos else ".")
-    elif codigo == 0:
-        texto = cor("Concluído: os dados no PostgreSQL são iguais aos do MySQL", "OK") + (
-            f" ({avisos} aviso(s) para rever)." if avisos else ".")
-    else:
-        texto = {1: cor("Concluído com diferenças ou erros.", "ERRO"), 2: cor("Parado na validação.", "ERRO"),
-                 130: cor("Interrompido.", "ERRO")}[codigo]
-    print(f"  {texto}\n  Relatório: {md}\n  Dados completos: {js}")
+    print(f"  {cor(resultado, tipo)}\n  Relatório: {md}\n  Dados completos: {js}")
     return codigo
 
 

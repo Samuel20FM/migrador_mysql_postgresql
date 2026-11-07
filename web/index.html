@@ -228,6 +228,11 @@
             <option value="criar-pais">Criar o pai em falta e deixar a FK válida</option>
             <option value="not-valid">Deixar os dados como estão e criar a FK NOT VALID</option>
           </select></label>
+        <label>Datas zero, parciais ou inválidas (0000-00-00, 2024-05-00, 2023-02-31)
+          <select data-opcao="datas_zero">
+            <option value="null">Passam a NULL (a coluna NOT NULL passa a aceitar NULL)</option>
+            <option value="0001-01-01">Passam a 0001-01-01 (a coluna continua NOT NULL)</option>
+          </select></label>
         <label>Comparação de texto
           <select data-opcao="comparacao_texto">
             <option value="mysql">Como no MySQL: ignora maiúsculas e acentos</option>
@@ -242,6 +247,7 @@
         <label class="marcar"><input type="checkbox" data-opcao="enum_sem_check"><span>ENUM sem CHECK com os valores</span></label>
         <label class="marcar"><input type="checkbox" data-opcao="aparar_espacos"><span>Tirar os espaços do fim nas chaves e índices (como o MySQL compara: 'x' = 'x ')</span></label>
         <label class="marcar"><input type="checkbox" data-opcao="manter_maiusculas"><span>Manter as maiúsculas nos nomes de tabelas e colunas</span></label>
+        <label class="marcar"><input type="checkbox" data-opcao="renomear_duplicadas"><span>Tabelas que só diferem nas maiúsculas (Tabela e tabela): a segunda fica tabela_2</span></label>
         <label class="marcar"><input type="checkbox" data-opcao="sem_comparar_linhas"><span>Na verificação, só contar linhas</span></label>
       </div>
     </details>

@@ -37,7 +37,11 @@ Para a senha não ficar no histórico do shell, deixe-a fora do URL ou use as va
 `MIGRAR_ORIGEM` e `MIGRAR_DESTINO`.
 
 Opções úteis: `--substituir` (recria tabelas que já existem), `--tabelas a,b`, `--excluir a,b`,
-`--esquema outro`, `--orfaos not-valid`, `--comparacao-texto exata`, `--aparar-espacos`, `--forcar` (migra mesmo com erros), `--sim` (sem confirmação). Para ver todas: `--help`.
+`--esquema outro`, `--orfaos not-valid`, `--comparacao-texto exata`, `--aparar-espacos`, `--datas-zero 0001-01-01` (ver abaixo), `--renomear-duplicadas`, `--forcar` (migra mesmo com erros), `--sim` (sem confirmação). Para ver todas: `--help`.
+
+No fim da validação aparece a **estimativa de tempo** de cada fase, medida numa amostra real
+dos dados. Durante a cópia, o progresso mostra quanto falta. Os critérios estão em
+[docs/tecnico.md](docs/tecnico.md#estimativa-de-tempo).
 
 O utilizador do MySQL só precisa de `SELECT` (e de `SHOW VIEW`, `TRIGGER` e `EVENT` para listar esses objetos).
 
@@ -72,11 +76,15 @@ Não precisa de nada além do `requirements.txt`: usa apenas a biblioteca padrã
 
 Cada execução grava em `relatorios/`:
 
-- `migracao_<data>.md`: resumo legível;
+- `migracao_<data>.md`: o relatório da migração. Tem o resultado, o tempo estimado e o real por
+  fase, os erros e avisos agrupados e o estado de cada tabela;
 - `migracao_<data>.json`: tudo, incluindo exemplos de linhas diferentes;
-- `migracao_<data>.sql`: os comandos DDL executados no PostgreSQL.
+- `migracao_<data>.sql`: os comandos DDL executados no PostgreSQL;
+- `migracao_<data>_por_rever.sql`: triggers, procedures, etc. sem tradução segura (só se houver).
 
-Códigos de saída: `0` sem diferenças, `1` diferenças ou erros, `2` parado na validação, `3` sem ligação.
+Códigos de saída: `0` sem diferenças, `1` diferenças ou erros, `2` parado na validação, `3` sem ligação, `130` interrompido.
+
+Documentação técnica (como funciona por dentro, bibliotecas, limitações): [docs/tecnico.md](docs/tecnico.md).
 
 ## Como as FKs são tratadas
 
@@ -126,7 +134,7 @@ Com isto, `=`, `IN`, `LIKE`, `GROUP BY`, `DISTINCT`, `UNIQUE` e FKs comportam-se
 | Registos órfãos (texto comparado como no PostgreSQL vai comparar) | pais em falta criados e FK válida (ou `NOT VALID` com `--orfaos not-valid`) |
 | FK para colunas sem índice único | cria `UNIQUE` se os dados forem únicos; senão é erro |
 | FK com tipos incompatíveis | erro |
-| Datas `0000-00-00`, parciais (`2024-05-00`) ou inválidas (`2023-02-31`) | passam a NULL (e a coluna aceita NULL); um `DEFAULT '0000-00-00'` passa a NULL. Cada caso tem o seu aviso |
+| Datas `0000-00-00`, parciais (`2024-05-00`) ou inválidas (`2023-02-31`) | aviso por caso, com duas opções: `--datas-zero null` (padrão) grava NULL e a coluna NOT NULL passa a aceitar NULL; `--datas-zero 0001-01-01` grava essa data e a coluna fica NOT NULL. O `DEFAULT '0000-00-00'` segue a mesma opção |
 | Espaços no fim numa chave ou índice (collation PAD SPACE: no MySQL `'x' = 'x '`) | aviso, e os órfãos são contados como o PostgreSQL compara; com `--aparar-espacos` os espaços do fim são removidos |
 | Aplicação que escreve sem modo estrito (servidor sem `STRICT_*`, ou datas zero / ENUM `''` nos dados) | aviso com as colunas NOT NULL sem valor por defeito: o PostgreSQL recusa os INSERT que as omitem |
 | Nomes reservados no PostgreSQL (`table`, `user`, `order`...) | aviso: a aplicação tem de os escrever entre aspas |
@@ -142,9 +150,10 @@ Com isto, `=`, `IN`, `LIKE`, `GROUP BY`, `DISTINCT`, `UNIQUE` e FKs comportam-se
 | ENUM com `''` inválido | `''` entra no CHECK (os dados ficam iguais) |
 | Tipos espaciais | PostGIS (`geometry`); sem PostGIS no servidor é erro |
 | Tabelas sem chave primária | comparadas como conjunto de linhas |
-| Nomes com mais de 63 bytes ou repetidos em minúsculas | erro |
+| Nomes com mais de 63 bytes ou repetidos em minúsculas | erro; para tabelas como `Tabela` e `tabela`, `--renomear-duplicadas` deixa a segunda como `tabela_2` |
 | Tabelas que já existem no destino | erro (ou aviso com `--substituir`) |
 | Triggers, views, procedures, funções, eventos | traduzidos para PL/pgSQL; o que não der vai para `*_por_rever.sql` |
+| Views com colunas fora do `GROUP BY` ou com alias no `HAVING` (aceites pelo MySQL) | colunas em `ANY_VALUE()`; o alias é trocado pela expressão |
 | `tinyint(1)` com nome `*_id` ou em FK | fica `smallint` (é um número, não um booleano) |
 
 ## Triggers, procedures, funções, eventos e views

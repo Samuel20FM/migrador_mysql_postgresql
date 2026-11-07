@@ -503,9 +503,11 @@ SELECT * FROM migracao.registos_criados;                              <span clas
     <tr><td><code>--esquema nome</code></td><td>Esquema de destino (padrão: public).</td></tr>
     <tr><td><code>--forcar</code></td><td>Migra mesmo com erros na validação.</td></tr>
     <tr><td><code>--sim</code></td><td>Não pede confirmação antes de migrar.</td></tr>
+    <tr><td><code>--datas-zero null|AAAA-MM-DD</code></td><td>Datas 0000-00-00, parciais ou inválidas. <code>null</code> (padrão): passam a NULL e as colunas NOT NULL passam a aceitar NULL. Uma data, ex. <code>0001-01-01</code>: passam a essa data e as colunas continuam NOT NULL.</td></tr>
     <tr><td><code>--aparar-espacos</code></td><td>Tira os espaços do fim nas colunas de chave e índice com collation PAD SPACE, para '=', UNIQUE e FKs compararem como no MySQL ('x' = 'x ').</td></tr>
     <tr><td><code>--sem-comparar-linhas</code></td><td>Na verificação só conta linhas (para bases muito grandes).</td></tr>
     <tr><td><code>--sem-booleanos</code>, <code>--enum-sem-check</code>, <code>--manter-maiusculas</code></td><td>tinyint(1) fica smallint; ENUM sem CHECK; nomes não passam a minúsculas.</td></tr>
+    <tr><td><code>--renomear-duplicadas</code></td><td>Tabelas cujo nome só difere nas maiúsculas (ex.: <code>Tabela</code> e <code>tabela</code>): a segunda fica <code>tabela_2</code>, em vez de a validação parar com erro.</td></tr>
     <tr><td><code>--lote N</code>, <code>--amostras N</code>, <code>--relatorios pasta</code></td><td>Linhas por lote; exemplos de diferenças por tabela; pasta dos relatórios.</td></tr>
   </table>
 
